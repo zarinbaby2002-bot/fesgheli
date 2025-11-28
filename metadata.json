@@ -1,0 +1,5 @@
+{
+  "name": "Fesgheli Animation Writer",
+  "description": "A smart scenario writer for the Fesgheli animation series using Gemini AI.",
+  "requestFramePermissions": []
+}
