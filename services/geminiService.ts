@@ -1,19 +1,29 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { getSystemPrompt, getUpdateSystemPrompt } from '../constants';
-import { ModelType, ScenarioSettings, Sequence, UpdatedSequenceData, SequenceUpdatePayload } from '../types';
+import { getSystemPrompt, getUpdateSystemPrompt, getImageRegenerationSystemPrompt } from '../constants';
+import { ModelType, ScenarioSettings, Sequence, UpdatedSequenceData, SequenceUpdatePayload, Character } from '../types';
 
-export const generateScenario = async (topic: string, model: ModelType, settings: ScenarioSettings): Promise<string> => {
+export const generateScenario = async (
+  topic: string, 
+  additionalDetails: string, 
+  model: ModelType, 
+  settings: ScenarioSettings
+): Promise<string> => {
   if (!process.env.API_KEY) {
     throw new Error("API Key is missing. Please check your environment variables.");
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+  let userPrompt = `Write the script for this episode: ${topic}`;
+  if (additionalDetails && additionalDetails.trim()) {
+    userPrompt += `\n\nIMPORTANT ADDITIONAL CONTEXT/TAGS/IDEAS:\n${additionalDetails}\n\nEnsure these details are strictly incorporated into the story, the descriptions, and the English Image/Video Prompts.`;
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: model,
-      contents: `Write the script for this episode: ${topic}`,
+      contents: userPrompt,
       config: {
         systemInstruction: getSystemPrompt(settings),
         temperature: 0.7,
@@ -66,5 +76,41 @@ export const updateSequencePrompts = async (
   } catch (error) {
     console.error("Gemini API Update Error:", error);
     throw new Error("خطا در به‌روزرسانی پرامپت‌ها.");
+  }
+};
+
+export const regenerateSingleImagePrompt = async (
+  actionBase: string,
+  activeCharacters: Character[],
+  settings: ScenarioSettings
+): Promise<string> => {
+  if (!process.env.API_KEY) {
+    throw new Error("API Key is missing.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  // Replace placeholder in system prompt or construct content
+  const systemInstruction = getImageRegenerationSystemPrompt(settings, activeCharacters)
+    .replace(/\[ACTION_BASE_PLACEHOLDER\]/g, actionBase);
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash', // Fast model is sufficient for re-rolling prompts
+      contents: `Generate a highly detailed, Pixar-style image prompt for this action: ${actionBase}`,
+      config: {
+        systemInstruction: systemInstruction,
+        temperature: 0.9, // Higher temperature for creativity/variation
+      },
+    });
+
+    if (response.text) {
+        return response.text.trim();
+    } else {
+        throw new Error("No content generated.");
+    }
+  } catch (error) {
+    console.error("Gemini API Image Regen Error:", error);
+    throw new Error("خطا در تولید مجدد پرامپت تصویر.");
   }
 };

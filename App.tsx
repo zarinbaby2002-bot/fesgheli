@@ -14,6 +14,7 @@ const DEFAULT_CHARACTERS: Character[] = [
 
 const App: React.FC = () => {
   const [topic, setTopic] = useState<string>('');
+  const [additionalDetails, setAdditionalDetails] = useState<string>('');
   const [model, setModel] = useState<ModelType>(ModelType.FLASH);
   const [settings, setSettings] = useState<ScenarioSettings>({
     sequenceCount: 3,
@@ -34,7 +35,7 @@ const App: React.FC = () => {
     setState({ isLoading: true, error: null, result: null });
 
     try {
-      const result = await generateScenario(topic, model, settings);
+      const result = await generateScenario(topic, additionalDetails, model, settings);
       setState({ isLoading: false, error: null, result });
     } catch (err: unknown) {
       let errorMessage = "یک خطای ناشناخته رخ داده است.";
@@ -69,6 +70,18 @@ const App: React.FC = () => {
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="مثال: آب‌بازی در حیاط، سفر به پاریس، خرید بستنی..."
                     className="w-full text-lg p-4 rounded-lg border border-slate-300 bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none placeholder:text-slate-400"
+                    disabled={state.isLoading}
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="additionalDetails" className="sr-only">توضیحات تکمیلی</label>
+                  <textarea 
+                    id="additionalDetails"
+                    value={additionalDetails}
+                    onChange={(e) => setAdditionalDetails(e.target.value)}
+                    placeholder="توضیحات تکمیلی، تگ‌ها، پیشنهادات یا ایده‌هایی که باید در سناریو و پرامپت‌ها لحاظ شوند (اختیاری)..."
+                    className="w-full text-lg p-4 rounded-lg border border-slate-300 bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none placeholder:text-slate-400 min-h-[120px] resize-y"
                     disabled={state.isLoading}
                   />
                 </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ScriptData, ScenarioSettings, ModelType, UpdatedSequenceData, SequenceUpdatePayload } from '../types';
-import { updateSequencePrompts } from '../services/geminiService';
+import { updateSequencePrompts, regenerateSingleImagePrompt } from '../services/geminiService';
 
 interface ResultDisplayProps {
   jsonContent: string;
@@ -18,6 +18,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
   const [videoCountMap, setVideoCountMap] = useState<Record<number, number>>({});
   
   const [isUpdating, setIsUpdating] = useState(false);
+  const [regeneratingImages, setRegeneratingImages] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     try {
@@ -29,13 +30,13 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
       const initialVideoCounts: Record<number, number> = {};
 
       parsed.sequences.forEach(seq => {
-        // Characters
+        // Characters: Initialize based on GLOBAL SETTINGS (User Preference), not just what AI sent.
+        // This ensures checkboxes are ticked by default if the character is active in the main settings.
         initialPresence[seq.id] = {};
         settings.characters.forEach(char => {
-            const isActive = seq.active_character_ids && Array.isArray(seq.active_character_ids)
-                ? seq.active_character_ids.some(id => String(id).toLowerCase() === String(char.id).toLowerCase())
-                : false;
-            initialPresence[seq.id][char.id] = isActive;
+            // Check if active in settings, default to true if so.
+            // This overrides strict AI output parsing for the initial UI state to facilitate editing.
+            initialPresence[seq.id][char.id] = char.isActive;
         });
 
         // Video Counts
@@ -82,6 +83,35 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
     return `${seconds} ثانیه`;
   };
 
+  const handleRegenerateImage = async (sequenceId: number, actionBase: string) => {
+    if (!data) return;
+    setRegeneratingImages(prev => ({ ...prev, [sequenceId]: true }));
+
+    try {
+        const sequencePresence = presenceMap[sequenceId] || {};
+        const activeChars = settings.characters.filter(c => sequencePresence[c.id]);
+        
+        // If no characters selected, use global defaults or random? 
+        // We stick to the filtered list. The prompt handles empty lists gracefully if needed, 
+        // but typically at least one char is active.
+        
+        const newPrompt = await regenerateSingleImagePrompt(actionBase, activeChars, settings);
+
+        // Update local data state
+        const newSequences = data.sequences.map(seq => 
+            seq.id === sequenceId ? { ...seq, image_prompt: newPrompt } : seq
+        );
+        
+        setData({ ...data, sequences: newSequences });
+
+    } catch (error) {
+        console.error(error);
+        alert("خطا در تولید مجدد تصویر.");
+    } finally {
+        setRegeneratingImages(prev => ({ ...prev, [sequenceId]: false }));
+    }
+  };
+
   const updatePrompts = async () => {
     if (!data) return;
     setIsUpdating(true);
@@ -120,12 +150,8 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
       const newSequences = data.sequences.map(seq => {
         const update = updatedData.find(u => u.id === seq.id);
         if (update) {
-            // Update presence map if AI picked random characters
-            const newPresence: Record<string, boolean> = {};
-            settings.characters.forEach(c => {
-                newPresence[c.id] = update.active_character_ids.some(id => String(id).toLowerCase() === String(c.id).toLowerCase());
-            });
-            setPresenceMap(prev => ({ ...prev, [seq.id]: newPresence }));
+            // NOTE: We do NOT update presenceMap here anymore, because the user explicitly set checkboxes.
+            // We want to keep the checkboxes as the user set them, not overwrite with what AI thinks.
             
             // Update video count map based on what was actually generated
             setVideoCountMap(prev => ({ ...prev, [seq.id]: update.video_prompts.length }));
@@ -265,7 +291,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                                     checked={presenceMap[seq.id]?.[char.id] || false}
                                     onChange={() => toggleCharacterInSequence(seq.id, char.id)}
                                 />
-                                <span className="w-2 h-2 rounded-full bg-current"></span>
+                                <span className={`w-2 h-2 rounded-full ${presenceMap[seq.id]?.[char.id] ? 'bg-primary' : 'bg-slate-300'}`}></span>
                                 {char.faName}
                             </label>
                         ))}
@@ -300,12 +326,26 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
               </div>
 
               {/* Image Prompt */}
-              <div>
-                <h4 className="font-bold text-slate-700 text-sm mb-2 flex items-center gap-2">
-                    <span>🖼️</span> پرامپت تصویر (Full Detail)
-                </h4>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                        <span>🖼️</span> پرامپت تصویر (Full Detail)
+                    </h4>
+                    <button
+                        onClick={() => handleRegenerateImage(seq.id, seq.action_base)}
+                        disabled={regeneratingImages[seq.id]}
+                        className={`bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-3 py-1.5 rounded-lg shadow-sm hover:shadow text-xs flex items-center gap-1.5 transition-all ${regeneratingImages[seq.id] ? 'opacity-75 cursor-not-allowed' : ''}`}
+                        title="تولید مجدد پرامپت تصویر با حفظ جزئیات بالا"
+                    >
+                       <span className={regeneratingImages[seq.id] ? "animate-spin" : ""}>
+                         {regeneratingImages[seq.id] ? '⏳' : '✨'}
+                       </span>
+                       <span>{regeneratingImages[seq.id] ? 'در حال نگارش...' : 'تولید مجدد تصویر'}</span>
+                    </button>
+                </div>
+                
                 <div className="relative group">
-                    <p className="font-mono text-sm text-slate-600 bg-slate-50 p-4 rounded border border-slate-200 dir-ltr text-left leading-relaxed">
+                    <p className={`font-mono text-sm text-slate-600 bg-slate-50 p-4 rounded border border-slate-200 dir-ltr text-left leading-relaxed transition-opacity ${regeneratingImages[seq.id] ? 'opacity-50' : 'opacity-100'}`}>
                     {seq.image_prompt}
                     </p>
                 </div>
@@ -358,7 +398,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
             ) : (
                 <>
                     <span>✨</span> 
-                    <span>به‌روزرسانی پرامپت‌ها و ساختار ویدیو</span>
+                    <span>به‌روزرسانی ویدیوها و کاراکترها</span>
                 </>
             )}
         </button>
