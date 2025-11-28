@@ -1,3 +1,4 @@
+
 export interface ScenarioResponse {
   content: string;
 }
@@ -10,5 +11,69 @@ export enum ModelType {
 export interface GenerationState {
   isLoading: boolean;
   error: string | null;
-  result: string | null;
+  result: string | null; // This will now hold a JSON string
+}
+
+export interface Character {
+  id: string;
+  name: string;
+  faName: string;
+  desc: string;
+  promptName: string; // The name used in image prompts (e.g., 'baby' instead of 'Fesgheli')
+  isActive: boolean;
+}
+
+export interface ScenarioSettings {
+  sequenceCount: number;
+  videosPerSequence: number;
+  characters: Character[];
+}
+
+// Interfaces for the JSON structure returned by Gemini
+export interface VideoPrompt {
+  id: number;
+  description: string;
+  prompt: string;
+}
+
+export interface Sequence {
+  id: number;
+  title: string;
+  camera_angle: string;
+  camera_movement: string;
+  // This is the core action description without characters listed, used for reconstructing prompts
+  action_base: string; 
+  active_character_ids: string[]; // List of character IDs present in this sequence
+  image_prompt: string;
+  video_prompts: VideoPrompt[];
+  transition: string;
+}
+
+export interface ScriptData {
+  episode_title: string;
+  summary: string; // New summary field
+  location: string;
+  background_prompt: string;
+  sequences: Sequence[];
+  instagram: {
+    title: string;
+    caption: string;
+    hashtags: string[];
+  };
+}
+
+// Payload sent to AI for updates
+export interface SequenceUpdatePayload {
+  id: number;
+  action_base: string;
+  active_character_ids: string[];
+  target_video_count: number;
+}
+
+// Response structure for the update operation
+export interface UpdatedSequenceData {
+  id: number;
+  active_character_ids: string[]; // Return this to confirm what was used (especially for random selection)
+  image_prompt: string;
+  video_prompts: VideoPrompt[];
 }

@@ -1,27 +1,40 @@
+
 import React, { useState } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ResultDisplay from './components/ResultDisplay';
 import { generateScenario } from './services/geminiService';
-import { ModelType, GenerationState } from './types';
+import { ModelType, GenerationState, ScenarioSettings, Character } from './types';
+
+const DEFAULT_CHARACTERS: Character[] = [
+  { id: 'baby', name: 'Baby', faName: 'فسقلی', desc: '1-year-old boy, mischievous', promptName: 'cute baby boy', isActive: true },
+  { id: 'ava', name: 'Ava', faName: 'آوا', desc: '7-year-old girl, caring sister', promptName: '7-year-old girl', isActive: true },
+  { id: 'hapo', name: 'Hapo', faName: 'هاپو', desc: 'Golden puppy, playful', promptName: 'golden retriever puppy', isActive: true },
+];
 
 const App: React.FC = () => {
   const [topic, setTopic] = useState<string>('');
   const [model, setModel] = useState<ModelType>(ModelType.FLASH);
+  const [settings, setSettings] = useState<ScenarioSettings>({
+    sequenceCount: 3,
+    videosPerSequence: 2,
+    characters: DEFAULT_CHARACTERS
+  });
+  
   const [state, setState] = useState<GenerationState>({
     isLoading: false,
     error: null,
     result: null,
   });
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!topic.trim()) return;
 
     setState({ isLoading: true, error: null, result: null });
 
     try {
-      const result = await generateScenario(topic, model);
+      const result = await generateScenario(topic, model, settings);
       setState({ isLoading: false, error: null, result });
     } catch (err: unknown) {
       let errorMessage = "یک خطای ناشناخته رخ داده است.";
@@ -33,7 +46,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans">
+    <div className="min-h-screen flex flex-col font-sans bg-slate-50">
       <Header />
       
       <div className="flex-1 flex flex-col md:flex-row">
@@ -44,7 +57,7 @@ const App: React.FC = () => {
             {/* Input Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <h2 className="text-xl font-bold text-slate-800 mb-2">موضوع اپیزود جدید</h2>
-              <p className="text-slate-500 mb-6 text-sm">موضوع را وارد کنید تا سناریوی کامل، پرامپت‌های تصویر/ویدیو و جزئیات فنی تولید شود.</p>
+              <p className="text-slate-500 mb-6 text-sm">موضوع را وارد کنید تا سناریوی کامل با تنظیمات انتخاب شده تولید شود.</p>
               
               <form onSubmit={handleGenerate} className="space-y-4">
                 <div>
@@ -55,7 +68,7 @@ const App: React.FC = () => {
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="مثال: آب‌بازی در حیاط، سفر به پاریس، خرید بستنی..."
-                    className="w-full text-lg p-4 rounded-lg border border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none placeholder:text-slate-400"
+                    className="w-full text-lg p-4 rounded-lg border border-slate-300 bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none placeholder:text-slate-400"
                     disabled={state.isLoading}
                   />
                 </div>
@@ -97,7 +110,7 @@ const App: React.FC = () => {
 
             {/* Result Display */}
             {state.result && (
-              <ResultDisplay content={state.result} />
+              <ResultDisplay jsonContent={state.result} settings={settings} />
             )}
             
           </div>
@@ -105,7 +118,19 @@ const App: React.FC = () => {
 
         {/* Sidebar */}
         <div className="order-1 md:order-2">
-            <Sidebar selectedModel={model} onModelChange={setModel} />
+            <Sidebar 
+                selectedModel={model} 
+                onModelChange={setModel} 
+                settings={settings}
+                onSettingsChange={setSettings}
+                onRegenerate={() => {
+                  if (topic.trim() && !state.isLoading) {
+                    handleGenerate();
+                  } else {
+                    alert("لطفاً ابتدا یک موضوع وارد کنید.");
+                  }
+                }}
+            />
         </div>
       </div>
     </div>
