@@ -48,15 +48,17 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-50">
-      <Header />
+      <div className="print:hidden">
+        <Header />
+      </div>
       
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Main Content Area */}
-        <main className="flex-1 p-4 md:p-8 order-2 md:order-1">
-          <div className="max-w-4xl mx-auto space-y-8">
+        <main className="flex-1 p-4 md:p-8 order-2 md:order-1 print:w-full print:p-0">
+          <div className="max-w-4xl mx-auto space-y-8 print:max-w-none print:space-y-4">
             
-            {/* Input Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            {/* Input Section - Hide on print if result exists, but show if initial state */}
+            <div className={`bg-white rounded-xl shadow-sm border border-slate-200 p-6 ${state.result ? 'print:hidden' : ''}`}>
               <h2 className="text-xl font-bold text-slate-800 mb-2">موضوع اپیزود جدید</h2>
               <p className="text-slate-500 mb-6 text-sm">موضوع را وارد کنید تا سناریوی کامل با تنظیمات انتخاب شده تولید شود.</p>
               
@@ -130,7 +132,7 @@ const App: React.FC = () => {
         </main>
 
         {/* Sidebar */}
-        <div className="order-1 md:order-2">
+        <div className="order-1 md:order-2 print:hidden">
             <Sidebar 
                 selectedModel={model} 
                 onModelChange={setModel} 
@@ -146,6 +148,17 @@ const App: React.FC = () => {
             />
         </div>
       </div>
+
+      <footer className="bg-white border-t border-slate-200 py-6 print:hidden mt-auto">
+        <div className="container mx-auto px-4 text-center">
+            <p className="text-slate-700 font-bold mb-2">ساخته شده توسط ZarinBaby</p>
+            <div className="text-xs text-slate-500 dir-ltr flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3">
+                <span>© {new Date().getFullYear()} ZarinBaby. All Rights Reserved.</span>
+                <span className="hidden md:inline">|</span>
+                <span className="font-sans">تمامی حقوق محفوظ است</span>
+            </div>
+        </div>
+      </footer>
     </div>
   );
 };

@@ -12,7 +12,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
   const [data, setData] = useState<ScriptData | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   
-  // Local state to track character presence per sequence: { sequenceId: { characterId: boolean } }
+  // Local state to track character presence per sequence: { sequenceId: { sequenceId: boolean } }
   const [presenceMap, setPresenceMap] = useState<Record<number, Record<string, boolean>>>({});
   // Local state to track video count per sequence: { sequenceId: count }
   const [videoCountMap, setVideoCountMap] = useState<Record<number, number>>({});
@@ -91,10 +91,6 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
         const sequencePresence = presenceMap[sequenceId] || {};
         const activeChars = settings.characters.filter(c => sequencePresence[c.id]);
         
-        // If no characters selected, use global defaults or random? 
-        // We stick to the filtered list. The prompt handles empty lists gracefully if needed, 
-        // but typically at least one char is active.
-        
         const newPrompt = await regenerateSingleImagePrompt(actionBase, activeChars, settings);
 
         // Update local data state
@@ -117,14 +113,11 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
     setIsUpdating(true);
 
     try {
-      // 1. Prepare payload with character lists AND video counts
       const sequencesPayload: SequenceUpdatePayload[] = data.sequences.map(seq => {
         const sequencePresence = presenceMap[seq.id] || {};
         
-        // Filter actively selected characters
         let activeChars = settings.characters.filter(c => sequencePresence[c.id]);
         
-        // LOGIC: If no characters selected manually, pick randomly from the allowed list
         if (activeChars.length === 0) {
           const shuffled = [...settings.characters].sort(() => 0.5 - Math.random());
           const count = Math.floor(Math.random() * settings.characters.length) + 1; 
@@ -139,21 +132,15 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
         };
       });
 
-      // 2. Call AI to rewrite prompts contextually
       const updatedData: UpdatedSequenceData[] = await updateSequencePrompts(
         sequencesPayload, 
-        ModelType.FLASH, // Use fast model for updates
+        ModelType.FLASH,
         settings
       );
 
-      // 3. Merge AI response back into state
       const newSequences = data.sequences.map(seq => {
         const update = updatedData.find(u => u.id === seq.id);
         if (update) {
-            // NOTE: We do NOT update presenceMap here anymore, because the user explicitly set checkboxes.
-            // We want to keep the checkboxes as the user set them, not overwrite with what AI thinks.
-            
-            // Update video count map based on what was actually generated
             setVideoCountMap(prev => ({ ...prev, [seq.id]: update.video_prompts.length }));
 
             return {
@@ -179,34 +166,89 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
     }
   };
 
-  const downloadText = () => {
+  // --- Export and Share Functions ---
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExportWord = () => {
     if (!data) return;
     
-    // Convert JSON back to a readable text format for download
-    let text = `🎬 اپیزود: ${data.episode_title}\n\n`;
-    text += `خلاصه: ${data.summary}\n\n`;
-    text += `زمان کل: ${calculateTotalTime()}\nلوکیشن: ${data.location}\n\n`;
-    text += `--- BACKGROUND ---\n${data.background_prompt}\n\n`;
-    
-    data.sequences.forEach(seq => {
-        text += `--- سکانس ${seq.id}: ${seq.title} ---\n`;
-        text += `زاویه: ${seq.camera_angle} | حرکت: ${seq.camera_movement}\n`;
-        text += `IMAGE PROMPT:\n> ${seq.image_prompt}\n\n`;
-        seq.video_prompts.forEach(vp => {
-            text += `VIDEO ${vp.id} (5s): ${vp.description}\n> ${vp.prompt}\n`;
-        });
-        text += `\nترنزیشن: ${seq.transition}\n\n`;
-    });
-    
-    text += `\n--- INSTAGRAM ---\n${data.instagram.title}\n${data.instagram.caption}\n${data.instagram.hashtags.join(' ')}`;
+    // Create a simple HTML structure for the Word document
+    const content = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40' dir="rtl">
+      <head><meta charset='utf-8'><title>${data.episode_title}</title></head>
+      <body style="font-family: Tahoma, Arial, sans-serif; direction: rtl; text-align: right;">
+        <h1>${data.episode_title}</h1>
+        <p><strong>خلاصه:</strong> ${data.summary}</p>
+        <p><strong>لوکیشن:</strong> ${data.location}</p>
+        <hr/>
+        ${data.sequences.map(seq => `
+          <h3>سکانس ${seq.id}: ${seq.title}</h3>
+          <p><strong>زاویه:</strong> ${seq.camera_angle} | <strong>حرکت:</strong> ${seq.camera_movement}</p>
+          <div style="background-color: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">
+            <strong>Image Prompt:</strong><br/>
+            ${seq.image_prompt}
+          </div>
+          <ul>
+            ${seq.video_prompts.map(vp => `
+              <li>
+                <strong>Shot ${vp.id} (5s):</strong> ${vp.description}<br/>
+                <em style="color: #555;">${vp.prompt}</em>
+              </li>
+            `).join('')}
+          </ul>
+          <p><strong>ترنزیشن:</strong> ${seq.transition}</p>
+          <hr/>
+        `).join('')}
+        <h3>Instagram</h3>
+        <p><strong>Caption:</strong> ${data.instagram.caption}</p>
+        <p><strong>Hashtags:</strong> ${data.instagram.hashtags.join(' ')}</p>
+      </body>
+      </html>
+    `;
 
-    const element = document.createElement("a");
-    const file = new Blob([text], {type: 'text/plain'});
-    element.href = URL.createObjectURL(file);
-    element.download = `scenario_${new Date().toISOString().slice(0,10)}.txt`;
-    document.body.appendChild(element); 
-    element.click();
-    document.body.removeChild(element);
+    const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${data.episode_title}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleShare = (platform: 'whatsapp' | 'telegram' | 'twitter' | 'facebook' | 'email' | 'instagram') => {
+    if (!data) return;
+
+    const url = window.location.href; // Or your deployed URL
+    // Summary text for social sharing
+    const shareText = `🎬 انیمیشن فسقلی\nعنوان: ${data.episode_title}\n\nخلاصه: ${data.summary}\n\n#فسقلی #انیمیشن`;
+    const fullText = `عنوان: ${data.episode_title}\n\n${data.summary}\n\nکپشن اینستاگرام:\n${data.instagram.caption}`;
+
+    switch (platform) {
+      case 'whatsapp':
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + "\n" + url)}`, '_blank');
+        break;
+      case 'telegram':
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareText)}`, '_blank');
+        break;
+      case 'twitter':
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`, '_blank');
+        break;
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+        break;
+      case 'email':
+        window.open(`mailto:?subject=${encodeURIComponent(data.episode_title)}&body=${encodeURIComponent(fullText)}`, '_blank');
+        break;
+      case 'instagram':
+        // Instagram doesn't support web text sharing easily. Copy caption to clipboard.
+        navigator.clipboard.writeText(data.instagram.caption + "\n\n" + data.instagram.hashtags.join(' '));
+        alert('کپشن و هشتگ‌ها در کلیپ‌بورد کپی شدند. اکنون می‌توانید در اینستاگرام پیست کنید.');
+        break;
+    }
   };
 
   if (parseError) {
@@ -217,26 +259,62 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
 
   return (
     <div className="space-y-8">
-      {/* Header Info */}
-      <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-primary mb-2">{data.episode_title}</h2>
-            <div className="flex flex-wrap gap-4 text-sm text-slate-500 mb-4">
-              <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100">
-                ⏱️ زمان کل: {calculateTotalTime()}
+      {/* Header Info & Actions */}
+      <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-6 relative">
+        <div className="flex flex-col xl:flex-row justify-between items-start gap-4 mb-6">
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-primary mb-2 flex items-center gap-2">
+                {data.episode_title}
+            </h2>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-500">
+              <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1">
+                <span>⏱️</span> {calculateTotalTime()}
               </span>
-              <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-100">
-                📍 {data.location}
+              <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-100 flex items-center gap-1">
+                <span>📍</span> {data.location}
               </span>
             </div>
           </div>
-          <button 
-              onClick={downloadText}
-              className="flex items-center gap-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg transition-colors"
-          >
-              <span>📥</span> دانلود متن
-          </button>
+          
+          {/* Action Toolbar */}
+          <div className="flex flex-wrap items-center gap-2 print:hidden bg-slate-50 p-2 rounded-lg border border-slate-100">
+             {/* Print / PDF */}
+             <button onClick={handlePrint} className="p-2 text-slate-600 hover:text-primary hover:bg-white rounded-md transition-all border border-transparent hover:border-slate-200" title="پرینت / ذخیره PDF">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+             </button>
+             
+             {/* Word Export */}
+             <button onClick={handleExportWord} className="p-2 text-slate-600 hover:text-blue-600 hover:bg-white rounded-md transition-all border border-transparent hover:border-slate-200" title="خروجی Word">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M10 13l-1.5 6l-1.5-6"></path><path d="M16 13l-1.5 6l-1.5-6"></path></svg>
+             </button>
+
+             <div className="w-px h-6 bg-slate-300 mx-1"></div>
+
+             {/* Telegram */}
+             <button onClick={() => handleShare('telegram')} className="p-2 text-slate-500 hover:text-sky-500 hover:bg-white rounded-md transition-all" title="تلگرام">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+             </button>
+
+             {/* WhatsApp */}
+             <button onClick={() => handleShare('whatsapp')} className="p-2 text-slate-500 hover:text-green-500 hover:bg-white rounded-md transition-all" title="واتساپ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+             </button>
+             
+             {/* Twitter/X */}
+             <button onClick={() => handleShare('twitter')} className="p-2 text-slate-500 hover:text-black hover:bg-white rounded-md transition-all" title="ایکس (توییتر)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z" /><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" /></svg>
+             </button>
+
+             {/* Facebook */}
+             <button onClick={() => handleShare('facebook')} className="p-2 text-slate-500 hover:text-blue-700 hover:bg-white rounded-md transition-all" title="فیس‌بوک">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+             </button>
+
+             {/* Email */}
+             <button onClick={() => handleShare('email')} className="p-2 text-slate-500 hover:text-amber-600 hover:bg-white rounded-md transition-all" title="ایمیل">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+             </button>
+          </div>
         </div>
         
         {/* Summary Section */}
@@ -258,7 +336,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
       {/* Sequences */}
       <div className="space-y-6">
         {data.sequences.map((seq) => (
-          <div key={seq.id} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+          <div key={seq.id} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden break-inside-avoid">
             <div className="bg-gradient-to-r from-slate-50 to-white p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2">
               <h3 className="font-bold text-lg text-slate-800">
                 سکانس {seq.id}: <span className="text-primary">{seq.title}</span>
@@ -270,8 +348,8 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
 
             <div className="p-6 space-y-6">
               
-              {/* Configuration for this sequence */}
-              <div className="bg-blue-50/50 rounded-lg p-4 border border-blue-100 flex flex-col md:flex-row md:items-center gap-6">
+              {/* Configuration for this sequence - Hide in Print */}
+              <div className="print:hidden bg-blue-50/50 rounded-lg p-4 border border-blue-100 flex flex-col md:flex-row md:items-center gap-6">
                 
                 {/* Character Selection */}
                 <div className="flex-1">
@@ -334,7 +412,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                     <button
                         onClick={() => handleRegenerateImage(seq.id, seq.action_base)}
                         disabled={regeneratingImages[seq.id]}
-                        className={`bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-3 py-1.5 rounded-lg shadow-sm hover:shadow text-xs flex items-center gap-1.5 transition-all ${regeneratingImages[seq.id] ? 'opacity-75 cursor-not-allowed' : ''}`}
+                        className={`print:hidden bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-3 py-1.5 rounded-lg shadow-sm hover:shadow text-xs flex items-center gap-1.5 transition-all ${regeneratingImages[seq.id] ? 'opacity-75 cursor-not-allowed' : ''}`}
                         title="تولید مجدد پرامپت تصویر با حفظ جزئیات بالا"
                     >
                        <span className={regeneratingImages[seq.id] ? "animate-spin" : ""}>
@@ -381,7 +459,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
       </div>
 
       {/* Update Button */}
-      <div className="sticky bottom-6 flex justify-center z-10">
+      <div className="print:hidden sticky bottom-6 flex justify-center z-10">
         <button 
             onClick={updatePrompts}
             disabled={isUpdating}
@@ -405,8 +483,20 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
       </div>
 
       {/* Social Media */}
-      <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-6 border border-pink-100 text-center">
-        <h3 className="font-bold text-pink-600 mb-2">{data.instagram.title}</h3>
+      <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-6 border border-pink-100 text-center break-inside-avoid relative">
+        <div className="flex items-center justify-center gap-2 mb-2">
+            <h3 className="font-bold text-pink-600">{data.instagram.title}</h3>
+            {/* Instagram Copy Button */}
+            <button 
+                onClick={() => handleShare('instagram')}
+                className="p-1.5 bg-white text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-full shadow-sm border border-pink-100 transition-all flex items-center gap-1"
+                title="کپی کپشن"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                <span className="text-xs font-bold px-1">کپی کپشن</span>
+            </button>
+        </div>
+        
         <p className="text-slate-700 mb-4 whitespace-pre-wrap">{data.instagram.caption}</p>
         <div className="text-blue-500 text-sm dir-ltr font-medium">
             {data.instagram.hashtags.join(' ')}
