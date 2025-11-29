@@ -8,6 +8,35 @@ interface ResultDisplayProps {
   settings: ScenarioSettings;
 }
 
+const CopyButton = ({ text, className = "" }: { text: string, className?: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={`p-1.5 rounded-md transition-all border flex items-center justify-center ${
+        copied 
+          ? 'bg-green-50 text-green-600 border-green-200' 
+          : 'bg-white text-slate-400 border-slate-200 hover:text-primary hover:border-primary shadow-sm'
+      } ${className}`}
+      title={copied ? "کپی شد!" : "کپی در کلیپ‌بورد"}
+    >
+      {copied ? (
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      ) : (
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      )}
+    </button>
+  );
+};
+
 const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) => {
   const [data, setData] = useState<ScriptData | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -327,9 +356,14 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
 
         <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
           <h4 className="font-bold text-slate-700 text-sm mb-2">🖼️ بک‌گراند خالی (Clean Plate)</h4>
-          <p className="font-mono text-sm text-slate-600 bg-white p-3 rounded border border-slate-200 dir-ltr text-left">
-            {data.background_prompt}
-          </p>
+          <div className="relative group">
+              <p className="font-mono text-sm text-slate-600 bg-white p-3 rounded border border-slate-200 dir-ltr text-left">
+                {data.background_prompt}
+              </p>
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <CopyButton text={data.background_prompt} />
+              </div>
+          </div>
         </div>
       </div>
 
@@ -423,9 +457,12 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                 </div>
                 
                 <div className="relative group">
-                    <p className={`font-mono text-sm text-slate-600 bg-slate-50 p-4 rounded border border-slate-200 dir-ltr text-left leading-relaxed transition-opacity ${regeneratingImages[seq.id] ? 'opacity-50' : 'opacity-100'}`}>
+                    <p className={`font-mono text-sm text-slate-600 bg-slate-50 p-4 pr-12 rounded border border-slate-200 dir-ltr text-left leading-relaxed transition-opacity ${regeneratingImages[seq.id] ? 'opacity-50' : 'opacity-100'}`}>
                     {seq.image_prompt}
                     </p>
+                    <div className="absolute top-2 right-2">
+                       <CopyButton text={seq.image_prompt} />
+                    </div>
                 </div>
               </div>
 
@@ -441,8 +478,9 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                                 <span className="text-xs font-bold text-white bg-secondary px-2 py-0.5 rounded-full mb-1 inline-block">Shot {vp.id}</span>
                                 <p className="text-sm text-slate-700 leading-6">{vp.description}</p>
                             </div>
-                            <div className="md:w-2/3">
-                                <p className="font-mono text-xs text-slate-500 dir-ltr text-left opacity-90">{vp.prompt}</p>
+                            <div className="md:w-2/3 flex gap-2 items-start">
+                                <p className="font-mono text-xs text-slate-500 dir-ltr text-left opacity-90 flex-1 p-1">{vp.prompt}</p>
+                                <CopyButton text={vp.prompt} className="shrink-0" />
                             </div>
                         </div>
                     ))}
