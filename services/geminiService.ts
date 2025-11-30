@@ -1,7 +1,8 @@
 
+
 import { GoogleGenAI } from "@google/genai";
 import { getSystemPrompt, getUpdateSystemPrompt, getImageRegenerationSystemPrompt } from '../constants';
-import { ModelType, ScenarioSettings, Sequence, UpdatedSequenceData, SequenceUpdatePayload, Character } from '../types';
+import { ModelType, ScenarioSettings, Sequence, UpdatedSequenceData, SequenceUpdatePayload, Character, VideoPrompt } from '../types';
 
 export const generateScenario = async (
   topic: string, 
@@ -82,8 +83,9 @@ export const updateSequencePrompts = async (
 export const regenerateSingleImagePrompt = async (
   actionBase: string,
   activeCharacters: Character[],
-  settings: ScenarioSettings
-): Promise<string> => {
+  settings: ScenarioSettings,
+  videoCount: number
+): Promise<{ image_prompt: string, video_prompts: VideoPrompt[] }> => {
   if (!process.env.API_KEY) {
     throw new Error("API Key is missing.");
   }
@@ -91,21 +93,22 @@ export const regenerateSingleImagePrompt = async (
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   // Replace placeholder in system prompt or construct content
-  const systemInstruction = getImageRegenerationSystemPrompt(settings, activeCharacters)
+  const systemInstruction = getImageRegenerationSystemPrompt(settings, activeCharacters, videoCount)
     .replace(/\[ACTION_BASE_PLACEHOLDER\]/g, actionBase);
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash', // Fast model is sufficient for re-rolling prompts
-      contents: `Generate a highly detailed, Pixar-style image prompt for this action: ${actionBase}`,
+      contents: `Generate a highly detailed, Pixar-style image prompt and corresponding video prompts for this action: ${actionBase}`,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.9, // Higher temperature for creativity/variation
+        temperature: 0.6, // Lower temperature to ensure stricter adherence to character constraints
+        responseMimeType: 'application/json',
       },
     });
 
     if (response.text) {
-        return response.text.trim();
+        return JSON.parse(response.text);
     } else {
         throw new Error("No content generated.");
     }

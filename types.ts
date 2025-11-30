@@ -39,6 +39,7 @@ export interface VideoPrompt {
 export interface Sequence {
   id: number;
   title: string;
+  summary: string; // 2-line summary of the sequence
   camera_angle: string;
   camera_movement: string;
   // This is the core action description without characters listed, used for reconstructing prompts

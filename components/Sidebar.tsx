@@ -131,7 +131,7 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedModel, onModelChange, setting
             {/* Characters Settings */}
             <div className="space-y-4">
                 <h3 className="font-bold text-slate-800 text-sm">کاراکترهای حاضر (پیش‌فرض)</h3>
-                <p className="text-xs text-slate-400">این تنظیمات برای تولید اولیه است. پس از تولید می‌توانید برای هر سکانس تغییر دهید.</p>
+                <p className="text-xs text-slate-400">این تنظیمات برای تولید اولیه است. اگر هیچ گزینه‌ای انتخاب نشود، کاراکترها به‌صورت تصادفی انتخاب می‌شوند.</p>
                 <div className="space-y-2">
                 {settings.characters.map((char) => (
                     <label key={char.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-100 transition-colors">

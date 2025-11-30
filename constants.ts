@@ -1,4 +1,5 @@
 
+
 import { ScenarioSettings, Character } from "./types";
 
 export const getSystemPrompt = (settings: ScenarioSettings): string => {
@@ -21,7 +22,8 @@ STRICTLY use only these characters. Do not add others.`;
   } else {
     characterInstruction = `
 NO SPECIFIC CHARACTERS SELECTED.
-You MUST randomly select one or more characters from the ALLOWED LIST below to feature in this episode.
+You MUST randomly select characters from the ALLOWED LIST for EACH sequence dynamically.
+Do not stick to a single set of characters for the whole episode unless the story requires it. Mix and match them across sequences.
 ALLOWED LIST:
 ${allAllowedCharacters}
 STRICTLY use only characters from this list. Do NOT introduce parents, adults, or other humans.`;
@@ -43,7 +45,7 @@ RULES:
 2.  **Videos per Sequence**: Generate exactly ${settings.videosPerSequence} video prompts per sequence.
 3.  **Timing**: Each video clip represents exactly **5 seconds**.
 4.  **Language**:
-    *   Story, Summary, Camera, Transitions, Captions: **PERSIAN (Farsi)**.
+    *   Story, Summary, Sequence Summaries, Camera, Transitions, Captions: **PERSIAN (Farsi)**.
     *   Image/Video Prompts: **ENGLISH**.
 5.  **Character Naming in Prompts**:
     *   In the Persian text, use the Persian names (فسقلی, آوا, هاپو).
@@ -70,6 +72,7 @@ Return a single valid JSON object with this schema (Do not use Markdown code blo
     {
       "id": 1,
       "title": "String (Persian)",
+      "summary": "String (Persian - 2 lines describing the action of this sequence at the beginning)",
       "camera_angle": "String (Persian)",
       "camera_movement": "String (Persian)",
       "action_base": "String (English description of the scene action WITHOUT listing characters explicitly)",
@@ -119,6 +122,9 @@ RULES:
    - Ensure visual continuity between videos in the sequence.
 4. **No Proper Names**: Use "IMAGE PROMPT NAME", NEVER "Fesgheli".
 5. **Clothing**: Do NOT describe the characters' clothing.
+6. **Language**:
+   - **Video Description**: MUST be in **PERSIAN (Farsi)**.
+   - **Prompts**: MUST be in **ENGLISH**.
 
 INPUT FORMAT:
 JSON List of sequences with { id, action_base, active_character_ids, target_video_count }.
@@ -132,7 +138,7 @@ Return a strictly valid JSON Array of objects. Do NOT use Markdown.
     "active_character_ids": ["string"],
     "image_prompt": "String (Rewritten Detailed English Image Prompt - KEEP IT LONG AND DETAILED)",
     "video_prompts": [
-       { "id": 1, "description": "Persian Description", "prompt": "String (Concise English Video Prompt)" }
+       { "id": 1, "description": "Persian Description (MUST BE FARSI)", "prompt": "String (Concise English Video Prompt)" }
        ... (Generate exactly target_video_count items)
     ]
   }
@@ -140,30 +146,61 @@ Return a strictly valid JSON Array of objects. Do NOT use Markdown.
 `;
 };
 
-export const getImageRegenerationSystemPrompt = (settings: ScenarioSettings, activeCharacters: Character[]): string => {
-  const charDescriptions = activeCharacters
-    .map(c => `- ${c.promptName} (${c.desc})`)
-    .join('\n');
+export const getImageRegenerationSystemPrompt = (settings: ScenarioSettings, activeCharacters: Character[], videoCount: number): string => {
+  const allowedCharNames = activeCharacters.map(c => c.promptName).join(', ');
+  const hasCharacters = activeCharacters.length > 0;
+  
+  const charDescriptions = hasCharacters
+    ? activeCharacters.map(c => `- ${c.promptName} (${c.desc})`).join('\n')
+    : "NO CHARACTERS ALLOWED. This is a pure environment/background shot.";
 
   return `
 You are a High-End CGI Visual Artist specialized in Prompt Engineering for Midjourney and Stable Diffusion (Pixar/Disney Style).
 
 TASK:
-Rewrite and ENHANCE the following Image Prompt for a 3D animation scene. 
+1. Generate an EXTREMELY DETAILED image prompt for a 3D animation scene based strictly on the provided Action and Characters.
+2. Generate ${videoCount} video prompts that perfectly match this new image prompt and the action sequence.
 
-CONTEXT:
-Action: The scene involves the following action: [ACTION_BASE_PLACEHOLDER]
-Characters present:
+!!! CRITICAL RULES - READ CAREFULLY !!!
+
+1. **STRICT CHARACTER LIMITATION**:
+   - **ALLOWED CHARACTERS**: [${hasCharacters ? allowedCharNames : "NONE"}].
+   - **FORBIDDEN**: You must NOT include any other person, animal, or character (No parents, no bystanders, no extra babies).
+   - If the allowed list is empty, the image MUST BE EMPTY of all characters.
+   - If the Action mentions a character that is NOT in the Allowed list, REWRITE the action to exclude them or replace them with an allowed character, or make it a first-person view.
+   - **VERIFY**: Before outputting, check if any unlisted character name appears. If so, remove it.
+
+2. **STORY FIDELITY**:
+   - The scene MUST depict exactly this action: "[ACTION_BASE_PLACEHOLDER]".
+   - Do not change the core event. If the action says "splashing water", the prompt must be about splashing water.
+   - **Consistency**: The video prompts must strictly follow the visual setup of the image prompt.
+
+3. **VISUAL STYLE**:
+   - "3d animation, Pixar style 3D render, Unreal Engine 5, Octane Render, 8k resolution, cinematic lighting".
+   - Highly detailed textures and environment.
+   - **Do NOT describe character clothing** (e.g. do not say "wearing a red shirt").
+
+4. **VIDEO PROMPTS**:
+   - Generate exactly ${videoCount} video prompts.
+   - They must be consistent with the image prompt.
+   - Concise, English, 5-second action descriptions.
+   - Format: "Action description, 3d animation, 3d render".
+   - **Language**: The 'description' field MUST be in **PERSIAN (Farsi)**. The 'prompt' field MUST be in **ENGLISH**.
+
+CONTEXT - CHARACTER LOOKS:
 ${charDescriptions}
 
-RULES:
-1.  **Output**: Return ONLY the raw string of the new prompt. No JSON, no quotes, no markdown.
-2.  **Style**: 3d animation, Pixar style 3D render, Unreal Engine 5, Octane Render, 8k resolution, cinematic lighting, volumetric atmosphere.
-3.  **Detail Level**: EXTREMELY HIGH. Do not summarize. Add details about lighting (soft, warm, cinematic), textures (fluffy, shiny, realistic), and composition.
-4.  **Characters**: Ensure strictly the listed characters are described performing the action. Use their "Prompt Names" (e.g., cute baby boy), NOT proper names.
-5.  **Clothing**: Do NOT describe the characters' clothing.
-6.  **Length**: The prompt should be verbose and descriptive (50-100 words).
+OUTPUT FORMAT:
+Return a single valid JSON object. Do not use Markdown.
 
-Input Prompt to Enhance: [ACTION_BASE_PLACEHOLDER]
+{
+  "image_prompt": "String (The extremely detailed image prompt)",
+  "video_prompts": [
+    { "id": 1, "description": "String (Persian description of action - MUST BE FARSI)", "prompt": "String (English Video Prompt)" }
+    ... (Up to ${videoCount})
+  ]
+}
+
+Target Action: [ACTION_BASE_PLACEHOLDER]
 `;
 };

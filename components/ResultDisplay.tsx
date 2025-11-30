@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { ScriptData, ScenarioSettings, ModelType, UpdatedSequenceData, SequenceUpdatePayload } from '../types';
 import { updateSequencePrompts, regenerateSingleImagePrompt } from '../services/geminiService';
@@ -123,18 +124,29 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
         const sequencePresence = presenceMap[sequenceId] || {};
         const activeChars = settings.characters.filter(c => sequencePresence[c.id]);
         
-        const newPrompt = await regenerateSingleImagePrompt(actionBase, activeChars, settings);
+        const currentVideoCount = videoCountMap[sequenceId] || 2; // Default to 2 if missing
+
+        const result = await regenerateSingleImagePrompt(actionBase, activeChars, settings, currentVideoCount);
 
         // Update local data state
         const newSequences = data.sequences.map(seq => 
-            seq.id === sequenceId ? { ...seq, image_prompt: newPrompt } : seq
+            seq.id === sequenceId ? { 
+              ...seq, 
+              image_prompt: result.image_prompt,
+              video_prompts: result.video_prompts
+            } : seq
         );
         
         setData({ ...data, sequences: newSequences });
+        
+        // Update video count map in case the regenerated videos count is different (shouldn't happen with correct prompt but safe to sync)
+        if (result.video_prompts.length !== currentVideoCount) {
+             setVideoCountMap(prev => ({ ...prev, [sequenceId]: result.video_prompts.length }));
+        }
 
     } catch (error) {
         console.error(error);
-        alert("خطا در تولید مجدد تصویر.");
+        alert("خطا در تولید مجدد تصویر و ویدیوها.");
     } finally {
         setRegeneratingImages(prev => ({ ...prev, [sequenceId]: false }));
     }
@@ -266,6 +278,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
         <hr/>
         ${data.sequences.map(seq => `
           <h3>سکانس ${seq.id}: ${seq.title}</h3>
+          <p style="color: #444; font-style: italic;">${seq.summary || ''}</p>
           <p><strong>زاویه:</strong> ${seq.camera_angle} | <strong>حرکت:</strong> ${seq.camera_movement}</p>
           <div style="background-color: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">
             <strong>Background Prompt (Clean Plate):</strong><br/>
@@ -421,6 +434,15 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
               </div>
             </div>
 
+            {/* Sequence Summary - 2 Lines */}
+            {seq.summary && (
+                <div className="bg-amber-50/50 px-6 py-3 border-b border-amber-100/50">
+                    <p className="text-sm text-slate-600 leading-relaxed italic text-justify">
+                        {seq.summary}
+                    </p>
+                </div>
+            )}
+
             <div className="p-6 space-y-6">
               
               {/* Configuration for this sequence - Hide in Print */}
@@ -503,12 +525,12 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                         onClick={() => handleRegenerateImage(seq.id, seq.action_base)}
                         disabled={regeneratingImages[seq.id]}
                         className={`print:hidden bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-3 py-1.5 rounded-lg shadow-sm hover:shadow text-xs flex items-center gap-1.5 transition-all ${regeneratingImages[seq.id] ? 'opacity-75 cursor-not-allowed' : ''}`}
-                        title="تولید مجدد پرامپت تصویر با حفظ جزئیات بالا"
+                        title="تولید مجدد پرامپت تصویر و ویدیوهای متناسب"
                     >
                        <span className={regeneratingImages[seq.id] ? "animate-spin" : ""}>
                          {regeneratingImages[seq.id] ? '⏳' : '✨'}
                        </span>
-                       <span>{regeneratingImages[seq.id] ? 'در حال نگارش...' : 'تولید مجدد تصویر'}</span>
+                       <span>{regeneratingImages[seq.id] ? 'در حال نگارش...' : 'تولید مجدد تصویر و ویدیو'}</span>
                     </button>
                 </div>
                 
@@ -570,7 +592,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
             ) : (
                 <>
                     <span>✨</span> 
-                    <span>به‌روزرسانی ویدیوها و کاراکترها</span>
+                    <span>به روز رسانی</span>
                 </>
             )}
         </button>
