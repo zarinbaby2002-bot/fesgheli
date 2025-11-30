@@ -59,13 +59,16 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
       const initialVideoCounts: Record<number, number> = {};
 
       parsed.sequences.forEach(seq => {
-        // Characters: Initialize based on GLOBAL SETTINGS (User Preference), not just what AI sent.
-        // This ensures checkboxes are ticked by default if the character is active in the main settings.
         initialPresence[seq.id] = {};
+        
+        // Normalize AI returned IDs to lowercase for comparison
+        const activeIds = (seq.active_character_ids || []).map(id => String(id).toLowerCase().trim());
+
         settings.characters.forEach(char => {
-            // Check if active in settings, default to true if so.
-            // This overrides strict AI output parsing for the initial UI state to facilitate editing.
-            initialPresence[seq.id][char.id] = char.isActive;
+            // Check if the AI used this character in this sequence.
+            // We strictly use AI output because the global setting might be empty (Random mode).
+            const isPresent = activeIds.includes(char.id.toLowerCase());
+            initialPresence[seq.id][char.id] = isPresent;
         });
 
         // Video Counts
@@ -142,24 +145,58 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
     setIsUpdating(true);
 
     try {
-      const sequencesPayload: SequenceUpdatePayload[] = data.sequences.map(seq => {
+      const sequencesPayload: SequenceUpdatePayload[] = [];
+
+      data.sequences.forEach(seq => {
         const sequencePresence = presenceMap[seq.id] || {};
         
+        // 1. Determine intended active characters from UI
         let activeChars = settings.characters.filter(c => sequencePresence[c.id]);
         
+        // Handle Random Logic if UI is empty
         if (activeChars.length === 0) {
           const shuffled = [...settings.characters].sort(() => 0.5 - Math.random());
           const count = Math.floor(Math.random() * settings.characters.length) + 1; 
           activeChars = shuffled.slice(0, count);
         }
 
-        return {
-          id: seq.id,
-          action_base: seq.action_base,
-          active_character_ids: activeChars.map(c => c.id),
-          target_video_count: videoCountMap[seq.id] || 1
-        };
+        const activeCharIds = activeChars.map(c => c.id);
+        const currentVideoCount = videoCountMap[seq.id] || seq.video_prompts.length;
+
+        // 2. Check for changes compared to existing data
+        const prevIds = new Set((seq.active_character_ids || []).map(id => id.toLowerCase().trim()));
+        const currIds = new Set(activeCharIds.map(c => c.toLowerCase().trim()));
+        
+        let hasCharsChanged = false;
+        if (prevIds.size !== currIds.size) {
+            hasCharsChanged = true;
+        } else {
+            for (const id of prevIds) {
+                if (!currIds.has(id)) {
+                    hasCharsChanged = true;
+                    break;
+                }
+            }
+        }
+
+        const hasVideoCountChanged = currentVideoCount !== seq.video_prompts.length;
+
+        // Only add to payload if something changed
+        if (hasCharsChanged || hasVideoCountChanged) {
+             sequencesPayload.push({
+                id: seq.id,
+                action_base: seq.action_base,
+                active_character_ids: activeCharIds,
+                target_video_count: currentVideoCount
+            });
+        }
       });
+
+      if (sequencesPayload.length === 0) {
+        alert("تغییری در تنظیمات هیچ سکانسی یافت نشد.\nلطفاً برای به‌روزرسانی، ابتدا کاراکترها یا تعداد ویدیوهای یک سکانس را تغییر دهید.");
+        setIsUpdating(false);
+        return;
+      }
 
       const updatedData: UpdatedSequenceData[] = await updateSequencePrompts(
         sequencesPayload, 
@@ -167,10 +204,21 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
         settings
       );
 
+      // Create new maps to update state
+      const newPresenceMap = { ...presenceMap };
+      const newVideoCountMap = { ...videoCountMap };
+
       const newSequences = data.sequences.map(seq => {
         const update = updatedData.find(u => u.id === seq.id);
         if (update) {
-            setVideoCountMap(prev => ({ ...prev, [seq.id]: update.video_prompts.length }));
+            // Sync local maps with the result
+            newVideoCountMap[update.id] = update.video_prompts.length;
+            
+            const activeIds = (update.active_character_ids || []).map(id => String(id).toLowerCase().trim());
+            settings.characters.forEach(char => {
+               if (!newPresenceMap[update.id]) newPresenceMap[update.id] = {};
+               newPresenceMap[update.id][char.id] = activeIds.includes(char.id.toLowerCase());
+            });
 
             return {
                 ...seq,
@@ -179,9 +227,12 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                 video_prompts: update.video_prompts
             };
         }
-        return seq;
+        return seq; // Keep unchanged sequence
       });
 
+      // Update states
+      setPresenceMap(newPresenceMap);
+      setVideoCountMap(newVideoCountMap);
       setData({
         ...data,
         sequences: newSequences

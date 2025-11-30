@@ -7,9 +7,9 @@ import { generateScenario } from './services/geminiService';
 import { ModelType, GenerationState, ScenarioSettings, Character } from './types';
 
 const DEFAULT_CHARACTERS: Character[] = [
-  { id: 'baby', name: 'Baby', faName: 'فسقلی', desc: '1-year-old boy, mischievous', promptName: 'cute baby boy', isActive: true },
-  { id: 'ava', name: 'Ava', faName: 'آوا', desc: '7-year-old girl, caring sister', promptName: '7-year-old girl', isActive: true },
-  { id: 'hapo', name: 'Hapo', faName: 'هاپو', desc: 'Golden puppy, playful', promptName: 'golden retriever puppy', isActive: true },
+  { id: 'baby', name: 'Baby', faName: 'فسقلی', desc: '1-year-old boy, mischievous', promptName: 'cute baby boy', isActive: false },
+  { id: 'ava', name: 'Ava', faName: 'آوا', desc: '7-year-old girl, caring sister', promptName: '7-year-old girl', isActive: false },
+  { id: 'hapo', name: 'Hapo', faName: 'هاپو', desc: 'Golden puppy, playful', promptName: 'golden retriever puppy', isActive: false },
 ];
 
 const App: React.FC = () => {
