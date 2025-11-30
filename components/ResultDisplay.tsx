@@ -217,6 +217,10 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
           <h3>سکانس ${seq.id}: ${seq.title}</h3>
           <p><strong>زاویه:</strong> ${seq.camera_angle} | <strong>حرکت:</strong> ${seq.camera_movement}</p>
           <div style="background-color: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">
+            <strong>Background Prompt (Clean Plate):</strong><br/>
+            ${seq.background_prompt}
+          </div>
+          <div style="background-color: #e6f7ff; padding: 10px; margin: 10px 0; border: 1px solid #91d5ff;">
             <strong>Image Prompt:</strong><br/>
             ${seq.image_prompt}
           </div>
@@ -251,8 +255,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
   const handleShare = (platform: 'whatsapp' | 'telegram' | 'twitter' | 'facebook' | 'email' | 'instagram') => {
     if (!data) return;
 
-    const url = window.location.href; // Or your deployed URL
-    // Summary text for social sharing
+    const url = window.location.href; 
     const shareText = `🎬 انیمیشن فسقلی\nعنوان: ${data.episode_title}\n\nخلاصه: ${data.summary}\n\n#فسقلی #انیمیشن`;
     const fullText = `عنوان: ${data.episode_title}\n\n${data.summary}\n\nکپشن اینستاگرام:\n${data.instagram.caption}`;
 
@@ -273,7 +276,6 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
         window.open(`mailto:?subject=${encodeURIComponent(data.episode_title)}&body=${encodeURIComponent(fullText)}`, '_blank');
         break;
       case 'instagram':
-        // Instagram doesn't support web text sharing easily. Copy caption to clipboard.
         navigator.clipboard.writeText(data.instagram.caption + "\n\n" + data.instagram.hashtags.join(' '));
         alert('کپشن و هشتگ‌ها در کلیپ‌بورد کپی شدند. اکنون می‌توانید در اینستاگرام پیست کنید.');
         break;
@@ -353,18 +355,6 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
              <p className="text-sm text-slate-700 leading-relaxed text-justify">{data.summary}</p>
           </div>
         )}
-
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <h4 className="font-bold text-slate-700 text-sm mb-2">🖼️ بک‌گراند خالی (Clean Plate)</h4>
-          <div className="relative group">
-              <p className="font-mono text-sm text-slate-600 bg-white p-3 rounded border border-slate-200 dir-ltr text-left">
-                {data.background_prompt}
-              </p>
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <CopyButton text={data.background_prompt} />
-              </div>
-          </div>
-        </div>
       </div>
 
       {/* Sequences */}
@@ -435,6 +425,21 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                         {((videoCountMap[seq.id] || 0) * 5)} ثانیه
                     </div>
                 </div>
+              </div>
+
+              {/* Background Prompt (Clean Plate) */}
+              <div className="relative">
+                 <h4 className="font-bold text-slate-700 text-sm mb-2 flex items-center gap-2">
+                    <span>🏔️</span> بک‌گراند (Clean Plate)
+                 </h4>
+                 <div className="relative group">
+                    <p className="font-mono text-sm text-slate-600 bg-white p-4 pr-12 rounded border border-slate-200 dir-ltr text-left leading-relaxed">
+                        {seq.background_prompt}
+                    </p>
+                    <div className="absolute top-2 right-2">
+                       <CopyButton text={seq.background_prompt} />
+                    </div>
+                 </div>
               </div>
 
               {/* Image Prompt */}

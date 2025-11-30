@@ -45,6 +45,7 @@ export interface Sequence {
   action_base: string; 
   active_character_ids: string[]; // List of character IDs present in this sequence
   image_prompt: string;
+  background_prompt: string; // Specific background for this sequence
   video_prompts: VideoPrompt[];
   transition: string;
 }
@@ -53,7 +54,6 @@ export interface ScriptData {
   episode_title: string;
   summary: string; // New summary field
   location: string;
-  background_prompt: string;
   sequences: Sequence[];
   instagram: {
     title: string;

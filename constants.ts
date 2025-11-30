@@ -50,11 +50,13 @@ RULES:
     *   In the **English Image/Video Prompts**, NEVER use the proper names "Fesgheli", "Ava", or "Hapo".
     *   Instead, strictly use the "IMAGE PROMPT NAME" (e.g., "cute baby boy", "sister", "dog").
     *   **Do NOT describe the characters' clothing.**
-6.  **Clean Plate**: Provide a prompt for the background without characters.
+6.  **Clean Plate (Background)**: For EACH sequence, provide a specific 'background_prompt'.
+    *   It must be a clean background (NO characters).
+    *   Style: "3d animation, Pixar style 3D render, 8k, highly detailed, volumetric lighting, unreal engine 5".
 7.  **No Extra Characters**: Do not include Father, Mother, or any other humans. Only the 3 allowed characters.
 8.  **Prompt Quality**:
-    *   **Image Prompts**: Must be EXTREMELY DETAILED, LONG, and DESCRIPTIVE. Include lighting (volumetric, cinematic, golden hour), texture (3d animation, 8k, unreal engine 5 render, highly detailed), and exact character positioning. DO NOT SUMMARIZE.
-    *   **Video Prompts**: Must be CONCISE, SHORT, and ACTION-ORIENTED. (e.g., "Low angle shot, the baby jumps into the puddle, water splashes, 3d animation, 3d render"). The videos in a sequence must be CONTINUOUS (Video 2 continues the action of Video 1).
+    *   **Image Prompts**: Must be EXTREMELY DETAILED, LONG, and DESCRIPTIVE. Include lighting (volumetric, cinematic, golden hour), texture (**3d animation**, 8k, unreal engine 5 render, highly detailed), and exact character positioning. DO NOT SUMMARIZE.
+    *   **Video Prompts**: Must be CONCISE, SHORT, and ACTION-ORIENTED. (e.g., "Low angle shot, the baby jumps into the puddle, water splashes, **3d animation**, 3d render"). The videos in a sequence must be CONTINUOUS (Video 2 continues the action of Video 1).
     *   **Audio**: All videos in a sequence share the same ambient sound mood.
 
 OUTPUT FORMAT:
@@ -64,7 +66,6 @@ Return a single valid JSON object with this schema (Do not use Markdown code blo
   "episode_title": "String (Persian)",
   "summary": "String (Persian summary of the episode and list of sequence headers)",
   "location": "String (Persian)",
-  "background_prompt": "String (English, Clean plate, no characters)",
   "sequences": [
     {
       "id": 1,
@@ -74,6 +75,7 @@ Return a single valid JSON object with this schema (Do not use Markdown code blo
       "action_base": "String (English description of the scene action WITHOUT listing characters explicitly)",
       "active_character_ids": ["String (Must be the exact ID defined above)"],
       "image_prompt": "String (Extremely detailed English Image Prompt)",
+      "background_prompt": "String (Detailed English Clean Plate Prompt - No Characters - 3d animation style)",
       "video_prompts": [
         { "id": 1, "description": "Persian description", "prompt": "Concise English motion prompt (5s duration logic)" }
       ],
