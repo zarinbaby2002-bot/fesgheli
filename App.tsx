@@ -1,6 +1,7 @@
 
 
-import React, { useState, useRef } from 'react';
+// Fix: Changed the React import to a namespace import to resolve module resolution issues.
+import * as React from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ResultDisplay from './components/ResultDisplay';
@@ -14,16 +15,19 @@ const DEFAULT_CHARACTERS: Character[] = [
 ];
 
 const App: React.FC = () => {
-  const [topic, setTopic] = useState<string>('');
-  const [additionalDetails, setAdditionalDetails] = useState<string>('');
-  const [model, setModel] = useState<ModelType>(ModelType.FLASH);
-  const [settings, setSettings] = useState<ScenarioSettings>({
+  // Fix: Used React.useState to correctly reference useState from the namespace import.
+  const [topic, setTopic] = React.useState<string>('');
+  // Fix: Used React.useState to correctly reference useState from the namespace import.
+  const [additionalDetails, setAdditionalDetails] = React.useState<string>('');
+  // Fix: Used React.useState to correctly reference useState from the namespace import.
+  const [settings, setSettings] = React.useState<ScenarioSettings>({
     sequenceCount: 3,
     videosPerSequence: 2,
     characters: DEFAULT_CHARACTERS
   });
   
-  const [state, setState] = useState<GenerationState>({
+  // Fix: Used React.useState to correctly reference useState from the namespace import.
+  const [state, setState] = React.useState<GenerationState>({
     isLoading: false,
     error: null,
     result: null,
@@ -36,7 +40,7 @@ const App: React.FC = () => {
     setState({ isLoading: true, error: null, result: null });
 
     try {
-      const result = await generateScenario(topic, additionalDetails, model, settings);
+      const result = await generateScenario(topic, additionalDetails, settings);
       setState({ isLoading: false, error: null, result });
     } catch (err: unknown) {
       let errorMessage = "یک خطای ناشناخته رخ داده است.";
@@ -135,8 +139,6 @@ const App: React.FC = () => {
         {/* Sidebar */}
         <div className="order-1 md:order-2 print:hidden">
             <Sidebar 
-                selectedModel={model} 
-                onModelChange={setModel} 
                 settings={settings}
                 onSettingsChange={setSettings}
                 onRegenerate={() => {

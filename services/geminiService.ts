@@ -13,7 +13,6 @@ import { ModelType, ScenarioSettings, Sequence, UpdatedSequenceData, SequenceUpd
 export const generateScenario = async (
   topic: string, 
   additionalDetails: string, 
-  model: ModelType, 
   settings: ScenarioSettings
 ): Promise<string> => {
   if (!process.env.API_KEY) {
@@ -55,7 +54,7 @@ export const generateScenario = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: model,
+      model: ModelType.FLASH, // Hardcoded for speed
       contents: contentParts,
       config: {
         systemInstruction: getSystemPrompt(settings),
@@ -81,7 +80,6 @@ export const generateScenario = async (
 
 export const updateSequencePrompts = async (
   sequencesPayload: SequenceUpdatePayload[], 
-  model: ModelType, 
   settings: ScenarioSettings
 ): Promise<UpdatedSequenceData[]> => {
   if (!process.env.API_KEY) {
@@ -92,7 +90,7 @@ export const updateSequencePrompts = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: model,
+      model: ModelType.FLASH, // Hardcoded for speed
       contents: `Update these sequences based on their new active characters and video counts: ${JSON.stringify(sequencesPayload)}`,
       config: {
         systemInstruction: getUpdateSystemPrompt(settings),

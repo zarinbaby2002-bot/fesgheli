@@ -4,14 +4,12 @@ import React, { useState, useRef } from 'react';
 import { ModelType, ScenarioSettings, Character } from '../types';
 
 interface SidebarProps {
-  selectedModel: ModelType;
-  onModelChange: (model: ModelType) => void;
   settings: ScenarioSettings;
   onSettingsChange: (settings: ScenarioSettings) => void;
   onRegenerate: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ selectedModel, onModelChange, settings, onSettingsChange, onRegenerate }) => {
+const Sidebar: React.FC<SidebarProps> = ({ settings, onSettingsChange, onRegenerate }) => {
   const [isOpen, setIsOpen] = useState(true);
   const [isDraggingOver, setIsDraggingOver] = useState<string | null>(null);
 
@@ -119,38 +117,6 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedModel, onModelChange, setting
                 طراحی شده توسط <strong>زرین بی بی</strong>
               </p>
             </div>
-
-            {/* Model Selection */}
-            <div className="space-y-3">
-                <label className="block text-sm font-medium text-slate-700">
-                مدل هوش مصنوعی
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                <button
-                    onClick={() => onModelChange(ModelType.FLASH)}
-                    className={`text-right px-4 py-2.5 rounded-lg border transition-all text-sm ${
-                    selectedModel === ModelType.FLASH
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
-                >
-                    <div className="font-semibold text-slate-900">Gemini Flash</div>
-                </button>
-                
-                <button
-                    onClick={() => onModelChange(ModelType.PRO)}
-                    className={`text-right px-4 py-2.5 rounded-lg border transition-all text-sm ${
-                    selectedModel === ModelType.PRO
-                        ? 'border-secondary bg-secondary/5 ring-1 ring-secondary'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
-                >
-                    <div className="font-semibold text-slate-900">Gemini Pro</div>
-                </button>
-                </div>
-            </div>
-
-            <hr className="border-slate-100" />
 
             {/* Structure Settings */}
             <div className="space-y-4">

@@ -433,7 +433,6 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
 
       const updatedData: UpdatedSequenceData[] = await updateSequencePrompts(
         sequencesPayload, 
-        ModelType.FLASH,
         settings
       );
 
