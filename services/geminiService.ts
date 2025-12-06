@@ -132,7 +132,11 @@ export const generateImage = async (prompt: string, referenceImages: { name: str
     let finalPrompt = prompt;
     if (referenceImages.length > 0) {
         const charPromptNames = referenceImages.map(img => `"${img.name}"`).join(' and ');
-        finalPrompt += `\n\n**CRITICAL INSTRUCTION:** The appearance of the character(s) (${charPromptNames}) is a non-negotiable requirement. You MUST replicate every detail of the face, hair, and clothing EXACTLY as shown in the reference images. Do not alter, add, or remove any elements of their design. This is the highest priority.`;
+        finalPrompt += `\n\n**CRITICAL, NON-NEGOTIABLE INSTRUCTION:** This is the most important rule. You MUST adhere to the provided reference images.
+1. **CHARACTER APPEARANCE**: Replicate the character(s) (${charPromptNames}) with 100% accuracy.
+2. **CLOTHING**: The clothing, including colors, style, and any patterns, MUST be an EXACT match to the reference image. DO NOT CHANGE THE OUTFIT.
+3. **FACE & HAIR**: The facial features and hairstyle must also be an EXACT match.
+Any deviation from the reference images is considered a failure. This is not a suggestion, it is a strict command.`;
     }
     contentParts.push({ text: finalPrompt });
 
@@ -146,7 +150,6 @@ export const generateImage = async (prompt: string, referenceImages: { name: str
     const MAX_RETRIES = 3;
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
-            // FIX: safetySettings should be inside the config object.
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash-image',
                 contents: { parts: contentParts },
@@ -219,8 +222,16 @@ export const generateVideo = async (prompt: string, imageBase64: string): Promis
 
     try {
         while (!operation.done) {
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Shortened polling
+            await new Promise(resolve => setTimeout(resolve, 5000));
             operation = await ai.operations.getVideosOperation({ operation: operation });
+
+            // Proactively check for errors within the operation object during polling
+            // @ts-ignore - The error object structure might not be fully typed by the SDK
+            if (operation.error) {
+                // @ts-ignore
+                const errorMessage = operation.error.message || 'Unknown error during video processing.';
+                throw new Error(`خطا در پردازش ویدیو: ${errorMessage}`);
+            }
         }
     
         // Fix: Added a type assertion to work around an incorrect type inference from the SDK.
@@ -240,6 +251,9 @@ export const generateVideo = async (prompt: string, imageBase64: string): Promis
   
     } catch (error) {
         console.error("Gemini Video Polling/Download Error:", error);
+        if (error instanceof Error) {
+            throw new Error(error.message); // Propagate the specific error message
+        }
         throw new Error("خطا در تکمیل یا دانلود ویدیو.");
     }
 };

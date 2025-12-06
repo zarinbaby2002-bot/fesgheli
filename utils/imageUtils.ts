@@ -1,6 +1,6 @@
 
 const MAX_DIMENSION = 1024;
-const JPEG_QUALITY = 0.8;
+const JPEG_QUALITY = 0.9;
 
 export const processImage = (
   file: File, 

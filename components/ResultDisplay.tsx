@@ -168,7 +168,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                 base64: char.imageBase64!
             }));
 
-        const detailedPrompt = `Create a single, ultra-high-quality frame from a 3D animated film. The overall scene is: "${seq.image_prompt}". The specific action for this single shot is: "${vp.prompt}". Ensure cinematic quality and hyper-detailed textures.`;
+        const detailedPrompt = `Create a single, masterpiece-quality frame from a 3D animated film, 8k resolution, ultra-high-quality, photorealistic details. The overall scene is: "${seq.image_prompt}". The specific action for this single shot is: "${vp.prompt}". Ensure cinematic quality and hyper-detailed textures.`;
         
         const imageUrl = await generateImage(detailedPrompt, referenceImages);
         
@@ -240,7 +240,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
     const generationPromises = seq.video_prompts
         .filter((vp: VideoPrompt) => !vp.imageBase64)
         .map((vp: VideoPrompt) => {
-            const detailedPrompt = `Create a single, ultra-high-quality frame from a 3D animated film. The overall scene is: "${seq.image_prompt}". The specific action for this single shot is: "${vp.prompt}". Ensure cinematic quality and hyper-detailed textures.`;
+            const detailedPrompt = `Create a single, masterpiece-quality frame from a 3D animated film, 8k resolution, ultra-high-quality, photorealistic details. The overall scene is: "${seq.image_prompt}". The specific action for this single shot is: "${vp.prompt}". Ensure cinematic quality and hyper-detailed textures.`;
             return generateImage(detailedPrompt, referenceImages)
                 .then(imageUrl => ({ vpId: vp.id, imageUrl, error: null }))
                 .catch(error => ({ vpId: vp.id, imageUrl: null, error }));
