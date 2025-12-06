@@ -1,5 +1,4 @@
 
-
 import { ScenarioSettings, Character } from "./types";
 
 export const getSystemPrompt = (settings: ScenarioSettings): string => {
@@ -29,16 +28,27 @@ ${allAllowedCharacters}
 STRICTLY use only characters from this list. Do NOT introduce parents, adults, or other humans.`;
   }
 
+  const charactersWithImages = settings.characters.filter(c => c.imageBase64);
+  let imageReferenceInstruction = "";
+  if (charactersWithImages.length > 0) {
+      imageReferenceInstruction = `
+CRITICAL VISUAL REFERENCES:
+You have been provided with reference images for the following characters: ${charactersWithImages.map(c => c.name).join(', ')}.
+ALL visual descriptions of these characters in the image and video prompts MUST STRICTLY and EXACTLY match the provided images. This includes their facial features, hairstyle, body shape, and EXACT clothing. Do NOT change their outfits or describe different clothes for them.
+`;
+  }
+
   return `
 You are an expert Scenario Writer for a 100-episode 3D animation series (Pixar Style).
 
+${imageReferenceInstruction}
 ${characterInstruction}
 
 FOR IMAGE PROMPTS, USE THE "IMAGE PROMPT NAME" DEFINED BELOW:
 ${allAllowedCharacters}
 
 YOUR TASK:
-Receive a 'Title' or 'Topic' and generate a full episode script in JSON format.
+Receive a 'Title' or 'Topic' and generate a full episode script in JSON format. You may also receive reference images for characters.
 
 RULES:
 1.  **Structure**: Exactly ${settings.sequenceCount} Sequences.
@@ -51,13 +61,12 @@ RULES:
     *   In the Persian text, use the Persian names (فسقلی, آوا, هاپو).
     *   In the **English Image/Video Prompts**, NEVER use the proper names "Fesgheli", "Ava", or "Hapo".
     *   Instead, strictly use the "IMAGE PROMPT NAME" (e.g., "cute baby boy", "sister", "dog").
-    *   **Do NOT describe the characters' clothing.**
 6.  **Clean Plate (Background)**: For EACH sequence, provide a specific 'background_prompt'.
     *   It must be a clean background (NO characters).
     *   Style: "3d animation, Pixar style 3D render, 8k, highly detailed, volumetric lighting, unreal engine 5".
 7.  **No Extra Characters**: Do not include Father, Mother, or any other humans. Only the 3 allowed characters.
 8.  **Prompt Quality**:
-    *   **Image Prompts**: Must be EXTREMELY DETAILED, LONG, and DESCRIPTIVE. Include lighting (volumetric, cinematic, golden hour), texture (**3d animation**, 8k, unreal engine 5 render, highly detailed), and exact character positioning. DO NOT SUMMARIZE.
+    *   **Image Prompts**: Must be EXTREMELY DETAILED, LONG, and DESCRIPTIVE. Include lighting (volumetric, cinematic, golden hour), texture (**3d animation**, 8k, unreal engine 5 render, highly detailed), and exact character positioning. DO NOT SUMMARIZE. If reference images are provided, the descriptions must exactly match their appearance and clothing.
     *   **Video Prompts**: Must be CONCISE, SHORT, and ACTION-ORIENTED. (e.g., "Low angle shot, the baby jumps into the puddle, water splashes, **3d animation**, 3d render"). The videos in a sequence must be CONTINUOUS (Video 2 continues the action of Video 1).
     *   **Audio**: All videos in a sequence share the same ambient sound mood.
 
@@ -116,13 +125,12 @@ RULES:
 1. **Contextual Rewrite**: Rewrite the prompt so the action flows naturally with the new characters.
    - If 'baby' is active: "A cute baby boy splashing water..."
    - If 'baby' and 'dog' are active: "A cute baby boy and a golden retriever puppy splashing water at each other..."
-2. **Image Prompt Style**: **EXTREMELY DETAILED**. Do NOT shorten the prompt. Use "3d animation, Pixar style 3D render, 8k, highly detailed, volumetric lighting, unreal engine 5, octane render". Describe the scene, lighting, and textures in depth.
+2. **Image Prompt Style**: **EXTREMELY DETAILED**. Do NOT shorten the prompt. Use "3d animation, Pixar style 3D render, 8k, highly detailed, volumetric lighting, unreal engine 5, octane render". Describe the scene, lighting, and textures in depth. If character reference images were used for the original script, assume they apply here and describe visuals consistent with them, including exact clothing.
 3. **Video Prompt Style**: CONCISE, SHORT, PRECISE. (e.g., "The dog runs left to right, 3d animation, 3d render style").
    - Generate exactly 'target_video_count' videos for the sequence.
    - Ensure visual continuity between videos in the sequence.
 4. **No Proper Names**: Use "IMAGE PROMPT NAME", NEVER "Fesgheli".
-5. **Clothing**: Do NOT describe the characters' clothing.
-6. **Language**:
+5. **Language**:
    - **Video Description**: MUST be in **PERSIAN (Farsi)**.
    - **Prompts**: MUST be in **ENGLISH**.
 
@@ -178,7 +186,7 @@ TASK:
 3. **VISUAL STYLE**:
    - "3d animation, Pixar style 3D render, Unreal Engine 5, Octane Render, 8k resolution, cinematic lighting".
    - Highly detailed textures and environment.
-   - **Do NOT describe character clothing** (e.g. do not say "wearing a red shirt").
+   - **Clothing**: If character references are available, describe their clothing EXACTLY as seen in them. Do not invent new outfits.
 
 4. **VIDEO PROMPTS**:
    - Generate exactly ${videoCount} video prompts.

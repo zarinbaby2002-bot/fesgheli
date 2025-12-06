@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+
+import React, { useState, useRef } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ResultDisplay from './components/ResultDisplay';
@@ -7,9 +8,9 @@ import { generateScenario } from './services/geminiService';
 import { ModelType, GenerationState, ScenarioSettings, Character } from './types';
 
 const DEFAULT_CHARACTERS: Character[] = [
-  { id: 'baby', name: 'Baby', faName: 'فسقلی', desc: '1-year-old boy, mischievous', promptName: 'cute baby boy', isActive: false },
-  { id: 'ava', name: 'Ava', faName: 'آوا', desc: '7-year-old girl, caring sister', promptName: '7-year-old girl', isActive: false },
-  { id: 'hapo', name: 'Hapo', faName: 'هاپو', desc: 'Golden puppy, playful', promptName: 'golden retriever puppy', isActive: false },
+  { id: 'baby', name: 'Baby', faName: 'فسقلی', desc: '1-year-old boy, mischievous', promptName: 'cute baby boy', isActive: false, imageBase64: null },
+  { id: 'ava', name: 'Ava', faName: 'آوا', desc: '7-year-old girl, caring sister', promptName: '7-year-old girl', isActive: false, imageBase64: null },
+  { id: 'hapo', name: 'Hapo', faName: 'هاپو', desc: 'Golden puppy, playful', promptName: 'golden retriever puppy', isActive: false, imageBase64: null },
 ];
 
 const App: React.FC = () => {

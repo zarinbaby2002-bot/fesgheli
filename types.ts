@@ -1,4 +1,6 @@
 
+
+
 export interface ScenarioResponse {
   content: string;
 }
@@ -21,6 +23,7 @@ export interface Character {
   desc: string;
   promptName: string; // The name used in image prompts (e.g., 'baby' instead of 'Fesgheli')
   isActive: boolean;
+  imageBase64?: string | null; // To store the base64 of the uploaded image
 }
 
 export interface ScenarioSettings {
@@ -34,6 +37,10 @@ export interface VideoPrompt {
   id: number;
   description: string;
   prompt: string;
+  imageBase64?: string | null;
+  isGenerating?: boolean;
+  videoUrl?: string | null;
+  isGeneratingVideo?: boolean;
 }
 
 export interface Sequence {
