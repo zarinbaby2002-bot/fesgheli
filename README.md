@@ -1,20 +1,25 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Fesgheli Animation Writer
 
-# Run and deploy your AI Studio app
+A smart scenario writer for the Fesgheli animation series using Gemini AI.
 
-This contains everything you need to run your app locally.
+## Features
+- **Scenario Generation**: Generates full episode scripts with Persian storytelling and English technical prompts.
+- **Character Management**: Supports specific characters (Baby, Ava, Hapo).
+- **Image Generation**: Uses Gemini 2.5 Flash Image to generate storyboard visuals.
+- **Video Generation**: Uses Veo to animate shots.
+- **Export**: Export to Word or share via social media.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1otT4OGFULRlse3athBD12AbTzejgX2QD
+## How to Use
+1.  Enter the main topic for the animation episode in the input box.
+2.  (Optional) Add any specific details or keywords you want to be included.
+3.  Use the sidebar to configure the number of sequences, videos, and default characters.
+4.  (Optional) Upload reference images for characters for more accurate visuals.
+5.  Click "تولید سناریو" (Generate Scenario).
+6.  Once the script is generated, you can modify characters/video counts for each sequence and click "به روز رسانی" (Update) to regenerate prompts.
+7.  Generate images and videos for each shot as needed.
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Tech Stack
+- React 19
+- TypeScript
+- Google GenAI SDK (@google/genai)
+- Tailwind CSS

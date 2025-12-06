@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useRef } from 'react';
 import { ModelType, ScenarioSettings, Character } from '../types';
 import { processImage } from '../utils/imageUtils';
