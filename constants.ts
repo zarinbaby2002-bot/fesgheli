@@ -28,20 +28,9 @@ ${allAllowedCharacters}
 STRICTLY use only characters from this list. Do NOT introduce parents, adults, or other humans.`;
   }
 
-  const charactersWithImages = settings.characters.filter(c => c.imageBase64);
-  let imageReferenceInstruction = "";
-  if (charactersWithImages.length > 0) {
-      imageReferenceInstruction = `
-CRITICAL VISUAL REFERENCES:
-You have been provided with reference images for the following characters: ${charactersWithImages.map(c => c.name).join(', ')}.
-ALL visual descriptions of these characters in the image and video prompts MUST STRICTLY and EXACTLY match the provided images. This includes their facial features, hairstyle, body shape, and EXACT clothing. Do NOT change their outfits or describe different clothes for them.
-`;
-  }
-
   return `
 You are an expert Scenario Writer for a 100-episode 3D animation series (Pixar Style).
 
-${imageReferenceInstruction}
 ${characterInstruction}
 
 FOR IMAGE PROMPTS, USE THE "IMAGE PROMPT NAME" DEFINED BELOW:

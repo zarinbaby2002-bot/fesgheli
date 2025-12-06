@@ -1,7 +1,6 @@
 
 
-// Fix: Changed the React import to a namespace import to resolve module resolution issues.
-import * as React from 'react';
+import React, { useState } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ResultDisplay from './components/ResultDisplay';
@@ -15,19 +14,15 @@ const DEFAULT_CHARACTERS: Character[] = [
 ];
 
 const App: React.FC = () => {
-  // Fix: Used React.useState to correctly reference useState from the namespace import.
-  const [topic, setTopic] = React.useState<string>('');
-  // Fix: Used React.useState to correctly reference useState from the namespace import.
-  const [additionalDetails, setAdditionalDetails] = React.useState<string>('');
-  // Fix: Used React.useState to correctly reference useState from the namespace import.
-  const [settings, setSettings] = React.useState<ScenarioSettings>({
+  const [topic, setTopic] = useState<string>('');
+  const [additionalDetails, setAdditionalDetails] = useState<string>('');
+  const [settings, setSettings] = useState<ScenarioSettings>({
     sequenceCount: 3,
     videosPerSequence: 2,
     characters: DEFAULT_CHARACTERS
   });
   
-  // Fix: Used React.useState to correctly reference useState from the namespace import.
-  const [state, setState] = React.useState<GenerationState>({
+  const [state, setState] = useState<GenerationState>({
     isLoading: false,
     error: null,
     result: null,

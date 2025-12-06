@@ -1,7 +1,9 @@
 
 
+
 import React, { useState, useRef } from 'react';
 import { ModelType, ScenarioSettings, Character } from '../types';
+import { processImage } from '../utils/imageUtils';
 
 interface SidebarProps {
   settings: ScenarioSettings;
@@ -12,6 +14,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ settings, onSettingsChange, onRegenerate }) => {
   const [isOpen, setIsOpen] = useState(true);
   const [isDraggingOver, setIsDraggingOver] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number | null>>({});
 
   const fileInputRefs = {
     baby: useRef<HTMLInputElement>(null),
@@ -40,20 +43,37 @@ const Sidebar: React.FC<SidebarProps> = ({ settings, onSettingsChange, onRegener
     }
   };
 
-  const handleFile = (file: File, charId: string) => {
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+  const handleFile = async (file: File, charId: string) => {
+    if (!file || !file.type.startsWith('image/')) {
+        alert("لطفاً یک فایل تصویری انتخاب کنید.");
+        return;
+    }
+    
+    setUploadProgress(prev => ({ ...prev, [charId]: 0 }));
+    
+    const progressCallback = (percent: number) => {
+        setUploadProgress(prev => ({ ...prev, [charId]: percent }));
+    };
+
+    try {
+        const processedImageBase64 = await processImage(file, progressCallback);
+
         onSettingsChange({
-          ...settings,
-          characters: settings.characters.map(char =>
-            char.id === charId ? { ...char, imageBase64: reader.result as string } : char
-          )
+            ...settings,
+            characters: settings.characters.map(char =>
+                char.id === charId ? { ...char, imageBase64: processedImageBase64 } : char
+            )
         });
-      };
-      reader.readAsDataURL(file);
-    } else {
-      alert("لطفاً یک فایل تصویری انتخاب کنید.");
+
+        // Hide progress bar after a short delay
+        setTimeout(() => {
+            setUploadProgress(prev => ({ ...prev, [charId]: null }));
+        }, 500);
+
+    } catch (error) {
+        console.error("Error processing image:", error);
+        alert("خطا در پردازش تصویر.");
+        setUploadProgress(prev => ({ ...prev, [charId]: null }));
     }
   };
 
@@ -200,6 +220,16 @@ const Sidebar: React.FC<SidebarProps> = ({ settings, onSettingsChange, onRegener
                             </button>
                           </div>
                         </>
+                      ) : uploadProgress[char.id] != null ? (
+                        <div className="absolute inset-0 p-4">
+                          <div className="w-full h-full flex flex-col items-center justify-center text-center text-primary">
+                            <div className="w-full bg-slate-200 rounded-full h-2">
+                              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress[char.id]}%` }}></div>
+                            </div>
+                            <span className="text-xs font-bold mt-2">{uploadProgress[char.id]}%</span>
+                            <span className="text-xs text-slate-500">در حال پردازش...</span>
+                          </div>
+                        </div>
                       ) : (
                         <button type="button" onClick={() => triggerFileInput(char.id as 'baby' | 'ava' | 'hapo')} className="text-slate-400 hover:text-primary transition-colors p-4 flex flex-col items-center justify-center w-full h-full text-xs">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2.4-2.4-4.2-4.8-4.8-.9-.3-1.8-.5-2.7-.5-1.3 0-2.6.4-3.8 1.2"/><path d="M7.8 15c-.7 1.2-1 2.5-.7 3.9.6 2.4 2.4 4.2 4.8 4.8.9.3 1.8.5 2.7.5 1.3 0 2.6-.4 3.8-1.2"/><path d="m3 11 4-4"/><path d="m17 13 4 4"/><circle cx="12" cy="12" r="4"/></svg>

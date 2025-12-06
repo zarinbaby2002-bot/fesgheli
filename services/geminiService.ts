@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { getSystemPrompt, getUpdateSystemPrompt, getImageRegenerationSystemPrompt } from '../constants';
 import { ModelType, ScenarioSettings, Sequence, UpdatedSequenceData, SequenceUpdatePayload, Character, VideoPrompt } from '../types';
@@ -26,36 +18,10 @@ export const generateScenario = async (
     userPrompt += `\n\nIMPORTANT ADDITIONAL CONTEXT/TAGS/IDEAS:\n${additionalDetails}\n\nEnsure these details are strictly incorporated into the story, the descriptions, and the English Image/Video Prompts.`;
   }
 
-  // Build a multipart request if there are images
-  const contentParts: any[] = [{ text: userPrompt }];
-
-  settings.characters.forEach(char => {
-    if (char.imageBase64) {
-      // Extract mime type and pure base64 data from the data URL
-      const match = char.imageBase64.match(/^data:(image\/.*?);base64,(.*)$/);
-      if (match && match[1] && match[2]) {
-        const mimeType = match[1];
-        const base64Data = match[2];
-
-        // Add a text part to identify the image
-        contentParts.push({ text: `This is the reference image for the character: ${char.promptName} (${char.faName}).` });
-        
-        // Add the image part
-        contentParts.push({
-          inlineData: {
-            mimeType,
-            data: base64Data
-          }
-        });
-      }
-    }
-  });
-
-
   try {
     const response = await ai.models.generateContent({
       model: ModelType.FLASH, // Hardcoded for speed
-      contents: contentParts,
+      contents: userPrompt,
       config: {
         systemInstruction: getSystemPrompt(settings),
         temperature: 0.7,
@@ -162,8 +128,14 @@ export const generateImage = async (prompt: string, referenceImages: { name: str
             contentParts.push({ inlineData: { mimeType: match[1], data: match[2] } });
         }
     });
-    contentParts.push({ text: prompt });
     
+    let finalPrompt = prompt;
+    if (referenceImages.length > 0) {
+        const charPromptNames = referenceImages.map(img => `"${img.name}"`).join(' and ');
+        finalPrompt += `\n\n**CRITICAL INSTRUCTION:** The appearance of the character(s) (${charPromptNames}) is a non-negotiable requirement. You MUST replicate every detail of the face, hair, and clothing EXACTLY as shown in the reference images. Do not alter, add, or remove any elements of their design. This is the highest priority.`;
+    }
+    contentParts.push({ text: finalPrompt });
+
     const safetySettings = [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -174,11 +146,14 @@ export const generateImage = async (prompt: string, referenceImages: { name: str
     const MAX_RETRIES = 3;
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
+            // FIX: safetySettings should be inside the config object.
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash-image',
                 contents: { parts: contentParts },
-                config: { imageConfig: { aspectRatio: "9:16" } },
-                safetySettings,
+                config: {
+                    imageConfig: { aspectRatio: "9:16" },
+                    safetySettings,
+                },
             });
             
             for (const part of response.candidates[0].content.parts) {
@@ -248,7 +223,8 @@ export const generateVideo = async (prompt: string, imageBase64: string): Promis
             operation = await ai.operations.getVideosOperation({ operation: operation });
         }
     
-        const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+        // Fix: Added a type assertion to work around an incorrect type inference from the SDK.
+        const downloadLink = (operation.response?.generatedVideos?.[0] as any)?.video?.uri;
     
         if (!downloadLink) {
             throw new Error("Video generation succeeded but no download link was found.");
