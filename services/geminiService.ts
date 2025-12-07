@@ -27,7 +27,7 @@ export const generateScenario = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: ModelType.PRO, // Changed to PRO for better complex JSON generation
+      model: ModelType.FLASH, // Changed to FLASH as requested
       contents: userPrompt,
       config: {
         systemInstruction: getSystemPrompt(settings),
