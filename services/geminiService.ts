@@ -18,21 +18,39 @@ export const generateScenario = async (
     userPrompt += `\n\nIMPORTANT ADDITIONAL CONTEXT/TAGS/IDEAS:\n${additionalDetails}\n\nEnsure these details are strictly incorporated into the story, the descriptions, and the English Image/Video Prompts.`;
   }
 
+  const safetySettings = [
+    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+  ];
+
   try {
     const response = await ai.models.generateContent({
-      model: ModelType.FLASH, // Hardcoded for speed
+      model: ModelType.PRO, // Changed to PRO for better complex JSON generation
       contents: userPrompt,
       config: {
         systemInstruction: getSystemPrompt(settings),
         temperature: 0.7,
-        responseMimeType: 'application/json', 
+        responseMimeType: 'application/json',
+        safetySettings, // Added safety settings
       },
     });
 
     if (response.text) {
         return response.text;
     } else {
-        throw new Error("No content generated.");
+        // More detailed error analysis
+        const finishReason = response.candidates?.[0]?.finishReason;
+        const safetyRatings = response.candidates?.[0]?.safetyRatings;
+        let detailedError = "پاسخی از هوش مصنوعی دریافت نشد.";
+        if (finishReason === 'SAFETY') {
+            detailedError = `محتوای تولید شده به دلیل مسائل ایمنی مسدود شد. جزئیات: ${JSON.stringify(safetyRatings)}`;
+        } else if (finishReason) {
+            detailedError = `تولید محتوا به دلیل "${finishReason}" متوقف شد.`;
+        }
+        console.error("No content generated. Full response:", response);
+        throw new Error(detailedError);
     }
     
   } catch (error) {
@@ -148,6 +166,9 @@ Any deviation from the reference images is considered a failure. This is not a s
     ];
 
     const MAX_RETRIES = 3;
+    let lastErrorIsQuota = false;
+    let lastErrorMessage: string | undefined;
+
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
             const response = await ai.models.generateContent({
@@ -166,15 +187,26 @@ Any deviation from the reference images is considered a failure. This is not a s
                 }
             }
             throw new Error("No image data found in the response.");
-        } catch (error) {
+        } catch (error: any) { // Use 'any' to access error properties directly
             console.error(`Gemini Image Generation Error (Attempt ${i + 1}/${MAX_RETRIES}):`, error);
+            if (error?.error?.code === 429 || (error.message && error.message.includes('quota'))) {
+                lastErrorIsQuota = true;
+                lastErrorMessage = `شما از حد مجاز استفاده (Quota) خود فراتر رفته‌اید. لطفاً جزئیات طرح و صورت‌حساب خود را بررسی کنید. برای اطلاعات بیشتر به https://ai.google.dev/gemini-api/docs/rate-limits و https://ai.dev/usage?tab=rate-limit مراجعه کنید. ممکن است نیاز باشد یک کلید API پولی جدید انتخاب کنید.`;
+            } else {
+                lastErrorIsQuota = false;
+                lastErrorMessage = error.message || "یک خطای ناشناخته در تولید تصویر رخ داد.";
+            }
+
             if (i === MAX_RETRIES - 1) {
-                throw new Error("خطا در تولید تصویر پس از چندین تلاش.");
+                // On the last retry, throw the accumulated specific error
+                throw new Error(lastErrorMessage);
             }
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
     }
-    throw new Error("خطا در تولید تصویر.");
+    // This line should ideally not be reached if the loop always throws on the last retry,
+    // but included for type safety and as a fallback
+    throw new Error(lastErrorMessage || "خطا در تولید تصویر پس از چندین تلاش.");
 };
 
 export const generateVideo = async (prompt: string, imageBase64: string): Promise<string> => {

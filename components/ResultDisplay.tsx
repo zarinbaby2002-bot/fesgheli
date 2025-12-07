@@ -137,6 +137,14 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
   }, [jsonContent, settings.characters]);
 
   const handleGenerateSingleImage = async (sequenceId: number, videoPromptId: number) => {
+    // @ts-ignore
+    if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
+        alert("برای تولید تصاویر، لطفاً یک کلید API پولی از پروژه Google Cloud خود انتخاب کنید.\nبرای اطلاعات بیشتر به ai.google.dev/gemini-api/docs/billing مراجعه کنید.");
+        // @ts-ignore
+        await window.aistudio.openSelectKey();
+        return; 
+    }
+
     if (!data) return;
 
     // Create a deep copy to modify and set loading state
@@ -188,7 +196,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
 
     } catch (error) {
         console.error(`Failed to generate image for prompt id: ${videoPromptId}`, error);
-        alert(`خطا در تولید تصویر برای شات ${videoPromptId}.`);
+        alert(`خطا در تولید تصویر برای شات ${videoPromptId}. ${error instanceof Error ? error.message : ''}`);
         setData(prevData => {
             if (!prevData) return null;
             const updatedData = JSON.parse(JSON.stringify(prevData));
@@ -205,6 +213,14 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
   };
 
   const handleGenerateAllImages = async (sequenceId: number) => {
+    // @ts-ignore
+    if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
+        alert("برای تولید تصاویر، لطفاً یک کلید API پولی از پروژه Google Cloud خود انتخاب کنید.\nبرای اطلاعات بیشتر به ai.google.dev/gemini-api/docs/billing مراجعه کنید.");
+        // @ts-ignore
+        await window.aistudio.openSelectKey();
+        return; 
+    }
+
     if (!data) return;
 
     setGeneratingAllImages(prev => ({ ...prev, [sequenceId]: true }));
@@ -263,6 +279,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
                         vp.imageBase64 = result.imageUrl;
                     } else {
                         console.error(`Failed to generate image for prompt id: ${result.vpId}`, result.error);
+                        alert(`خطا در تولید تصویر برای شات ${result.vpId}. ${result.error instanceof Error ? result.error.message : ''}`);
                     }
                 }
             });
@@ -378,7 +395,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
 
     } catch (error) {
         console.error(error);
-        alert("خطا در تولید مجدد تصویر و ویدیوها.");
+        alert(`خطا در تولید مجدد تصویر و ویدیوها. ${error instanceof Error ? error.message : ''}`);
     } finally {
         setRegeneratingImages(prev => ({ ...prev, [sequenceId]: false }));
     }
@@ -459,7 +476,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ jsonContent, settings }) 
 
     } catch (error) {
         console.error(error);
-        alert("خطا در به‌روزرسانی پرامپت‌ها.");
+        alert(`خطا در به‌روزرسانی پرامپت‌ها. ${error instanceof Error ? error.message : ''}`);
     } finally {
         setIsUpdating(false);
     }
