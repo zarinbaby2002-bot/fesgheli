@@ -7,11 +7,11 @@ export const generateScenario = async (
   additionalDetails: string, 
   settings: ScenarioSettings
 ): Promise<string> => {
-  if (!import.meta.env.VITE_API_KEY) {
+  if (!process.env.API_KEY) {
     throw new Error("API Key is missing. Please check your environment variables.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   let userPrompt = `Write the script for this episode: ${topic}`;
   if (additionalDetails && additionalDetails.trim()) {
@@ -27,13 +27,13 @@ export const generateScenario = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: ModelType.PRO, // Reverted to PRO for better complex JSON generation
+      model: ModelType.FLASH, // Switched to FLASH to fix Quota/429 errors with PRO model
       contents: userPrompt,
       config: {
         systemInstruction: getSystemPrompt(settings),
         temperature: 0.7,
         responseMimeType: 'application/json',
-        safetySettings, // Added safety settings
+        safetySettings,
       },
     });
 
@@ -56,6 +56,10 @@ export const generateScenario = async (
   } catch (error) {
     console.error("Gemini API Error:", error);
     if (error instanceof Error) {
+        // Handle Quota Exceeded specifically
+        if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('RESOURCE_EXHAUSTED')) {
+           throw new Error("سهمیه استفاده از هوش مصنوعی (Quota) پر شده است. لطفاً کمی صبر کنید یا از کلید API دیگری استفاده نمایید.");
+        }
         throw new Error(`خطا در ارتباط با هوش مصنوعی: ${error.message}`);
     }
     throw new Error("An unexpected error occurred.");
@@ -66,11 +70,11 @@ export const updateSequencePrompts = async (
   sequencesPayload: SequenceUpdatePayload[], 
   settings: ScenarioSettings
 ): Promise<UpdatedSequenceData[]> => {
-  if (!import.meta.env.VITE_API_KEY) {
+  if (!process.env.API_KEY) {
     throw new Error("API Key is missing.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     const response = await ai.models.generateContent({
@@ -100,11 +104,11 @@ export const regenerateSingleImagePrompt = async (
   settings: ScenarioSettings,
   videoCount: number
 ): Promise<{ image_prompt: string, video_prompts: VideoPrompt[] }> => {
-  if (!import.meta.env.VITE_API_KEY) {
+  if (!process.env.API_KEY) {
     throw new Error("API Key is missing.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   // Replace placeholder in system prompt or construct content
   const systemInstruction = getImageRegenerationSystemPrompt(settings, activeCharacters, videoCount)
@@ -133,11 +137,11 @@ export const regenerateSingleImagePrompt = async (
 };
 
 export const generateImage = async (prompt: string, referenceImages: { name: string; base64: string }[]): Promise<string> => {
-    if (!import.meta.env.VITE_API_KEY) {
+    if (!process.env.API_KEY) {
       throw new Error("API Key is missing.");
     }
   
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const contentParts: any[] = [];
     referenceImages.forEach(img => {
@@ -191,7 +195,7 @@ Any deviation from the reference images is considered a failure. This is not a s
             console.error(`Gemini Image Generation Error (Attempt ${i + 1}/${MAX_RETRIES}):`, error);
             if (error?.error?.code === 429 || (error.message && error.message.includes('quota'))) {
                 lastErrorIsQuota = true;
-                lastErrorMessage = `شما از حد مجاز استفاده (Quota) خود فراتر رفته‌اید. لطفاً جزئیات طرح و صورت‌حساب خود را بررسی کنید. برای اطلاعات بیشتر به https://ai.google.dev/gemini-api/docs/rate-limits و https://ai.dev/usage?tab=rate-limit مراجعه کنید. ممکن است نیاز باشد یک کلید API پولی جدید انتخاب کنید.`;
+                lastErrorMessage = `شما از حد مجاز استفاده (Quota) خود فراتر رفته‌اید. لطفاً جزئیات طرح و صورت‌حساب خود را بررسی کنید.`;
             } else {
                 lastErrorIsQuota = false;
                 lastErrorMessage = error.message || "یک خطای ناشناخته در تولید تصویر رخ داد.";
@@ -210,10 +214,10 @@ Any deviation from the reference images is considered a failure. This is not a s
 };
 
 export const generateVideo = async (prompt: string, imageBase64: string): Promise<string> => {
-    if (!import.meta.env.VITE_API_KEY) {
+    if (!process.env.API_KEY) {
         throw new Error("API Key is missing.");
     }
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
     const match = imageBase64.match(/^data:(image\/.*?);base64,(.*)$/);
     if (!match || !match[1] || !match[2]) {
@@ -273,7 +277,7 @@ export const generateVideo = async (prompt: string, imageBase64: string): Promis
             throw new Error("Video generation succeeded but no download link was found.");
         }
         
-        const videoResponse = await fetch(`${downloadLink}&key=${import.meta.env.VITE_API_KEY}`);
+        const videoResponse = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
         if (!videoResponse.ok) {
             const errorBody = await videoResponse.text();
             throw new Error(`Failed to download video file. Status: ${videoResponse.status}. Body: ${errorBody}`);
