@@ -7,11 +7,12 @@ export const generateScenario = async (
   additionalDetails: string, 
   settings: ScenarioSettings
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API Key is missing. Please check your environment variables.");
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please check your environment variables (API_KEY).");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
 
   let userPrompt = `Write the script for this episode: ${topic}`;
   if (additionalDetails && additionalDetails.trim()) {
@@ -70,11 +71,12 @@ export const updateSequencePrompts = async (
   sequencesPayload: SequenceUpdatePayload[], 
   settings: ScenarioSettings
 ): Promise<UpdatedSequenceData[]> => {
-  if (!process.env.API_KEY) {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
     throw new Error("API Key is missing.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
     const response = await ai.models.generateContent({
@@ -104,11 +106,12 @@ export const regenerateSingleImagePrompt = async (
   settings: ScenarioSettings,
   videoCount: number
 ): Promise<{ image_prompt: string, video_prompts: VideoPrompt[] }> => {
-  if (!process.env.API_KEY) {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
     throw new Error("API Key is missing.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   
   // Replace placeholder in system prompt or construct content
   const systemInstruction = getImageRegenerationSystemPrompt(settings, activeCharacters, videoCount)
@@ -137,11 +140,12 @@ export const regenerateSingleImagePrompt = async (
 };
 
 export const generateImage = async (prompt: string, referenceImages: { name: string; base64: string }[]): Promise<string> => {
-    if (!process.env.API_KEY) {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
       throw new Error("API Key is missing.");
     }
   
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     const contentParts: any[] = [];
     referenceImages.forEach(img => {
@@ -214,10 +218,11 @@ Any deviation from the reference images is considered a failure. This is not a s
 };
 
 export const generateVideo = async (prompt: string, imageBase64: string): Promise<string> => {
-    if (!process.env.API_KEY) {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
         throw new Error("API Key is missing.");
     }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
   
     const match = imageBase64.match(/^data:(image\/.*?);base64,(.*)$/);
     if (!match || !match[1] || !match[2]) {
@@ -277,7 +282,7 @@ export const generateVideo = async (prompt: string, imageBase64: string): Promis
             throw new Error("Video generation succeeded but no download link was found.");
         }
         
-        const videoResponse = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+        const videoResponse = await fetch(`${downloadLink}&key=${apiKey}`);
         if (!videoResponse.ok) {
             const errorBody = await videoResponse.text();
             throw new Error(`Failed to download video file. Status: ${videoResponse.status}. Body: ${errorBody}`);
