@@ -119,7 +119,7 @@ export const regenerateSingleImagePrompt = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `Generate a highly detailed, Pixar-style image prompt and corresponding video prompts for this action: ${actionBase}`,
       config: {
         systemInstruction: systemInstruction,
