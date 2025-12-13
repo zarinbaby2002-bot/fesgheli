@@ -7,9 +7,10 @@ export const generateScenario = async (
   additionalDetails: string, 
   settings: ScenarioSettings
 ): Promise<string> => {
-  const apiKey = process.env.API_KEY;
+  // @ts-ignore
+  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
-    throw new Error("API Key is missing. Please check your environment variables (API_KEY).");
+    throw new Error("API Key is missing. Please check your environment variables (VITE_API_KEY).");
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -28,7 +29,7 @@ export const generateScenario = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: ModelType.FLASH, // Switched to FLASH to fix Quota/429 errors with PRO model
+      model: ModelType.FLASH, 
       contents: userPrompt,
       config: {
         systemInstruction: getSystemPrompt(settings),
@@ -41,7 +42,6 @@ export const generateScenario = async (
     if (response.text) {
         return response.text;
     } else {
-        // More detailed error analysis
         const finishReason = response.candidates?.[0]?.finishReason;
         const safetyRatings = response.candidates?.[0]?.safetyRatings;
         let detailedError = "پاسخی از هوش مصنوعی دریافت نشد.";
@@ -57,7 +57,6 @@ export const generateScenario = async (
   } catch (error) {
     console.error("Gemini API Error:", error);
     if (error instanceof Error) {
-        // Handle Quota Exceeded specifically
         if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('RESOURCE_EXHAUSTED')) {
            throw new Error("سهمیه استفاده از هوش مصنوعی (Quota) پر شده است. لطفاً کمی صبر کنید یا از کلید API دیگری استفاده نمایید.");
         }
@@ -71,16 +70,17 @@ export const updateSequencePrompts = async (
   sequencesPayload: SequenceUpdatePayload[], 
   settings: ScenarioSettings
 ): Promise<UpdatedSequenceData[]> => {
-  const apiKey = process.env.API_KEY;
+  // @ts-ignore
+  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
-    throw new Error("API Key is missing.");
+    throw new Error("API Key is missing (VITE_API_KEY).");
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
   try {
     const response = await ai.models.generateContent({
-      model: ModelType.FLASH, // Hardcoded for speed
+      model: ModelType.FLASH,
       contents: `Update these sequences based on their new active characters and video counts: ${JSON.stringify(sequencesPayload)}`,
       config: {
         systemInstruction: getUpdateSystemPrompt(settings),
@@ -106,24 +106,24 @@ export const regenerateSingleImagePrompt = async (
   settings: ScenarioSettings,
   videoCount: number
 ): Promise<{ image_prompt: string, video_prompts: VideoPrompt[] }> => {
-  const apiKey = process.env.API_KEY;
+  // @ts-ignore
+  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
-    throw new Error("API Key is missing.");
+    throw new Error("API Key is missing (VITE_API_KEY).");
   }
 
   const ai = new GoogleGenAI({ apiKey });
   
-  // Replace placeholder in system prompt or construct content
   const systemInstruction = getImageRegenerationSystemPrompt(settings, activeCharacters, videoCount)
     .replace(/\[ACTION_BASE_PLACEHOLDER\]/g, actionBase);
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', // Fast model is sufficient for re-rolling prompts
+      model: 'gemini-2.5-flash',
       contents: `Generate a highly detailed, Pixar-style image prompt and corresponding video prompts for this action: ${actionBase}`,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.6, // Lower temperature to ensure stricter adherence to character constraints
+        temperature: 0.6,
         responseMimeType: 'application/json',
       },
     });
@@ -140,9 +140,10 @@ export const regenerateSingleImagePrompt = async (
 };
 
 export const generateImage = async (prompt: string, referenceImages: { name: string; base64: string }[]): Promise<string> => {
-    const apiKey = process.env.API_KEY;
+    // @ts-ignore
+    const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) {
-      throw new Error("API Key is missing.");
+      throw new Error("API Key is missing (VITE_API_KEY).");
     }
   
     const ai = new GoogleGenAI({ apiKey });
@@ -195,7 +196,7 @@ Any deviation from the reference images is considered a failure. This is not a s
                 }
             }
             throw new Error("No image data found in the response.");
-        } catch (error: any) { // Use 'any' to access error properties directly
+        } catch (error: any) {
             console.error(`Gemini Image Generation Error (Attempt ${i + 1}/${MAX_RETRIES}):`, error);
             if (error?.error?.code === 429 || (error.message && error.message.includes('quota'))) {
                 lastErrorIsQuota = true;
@@ -206,21 +207,19 @@ Any deviation from the reference images is considered a failure. This is not a s
             }
 
             if (i === MAX_RETRIES - 1) {
-                // On the last retry, throw the accumulated specific error
                 throw new Error(lastErrorMessage);
             }
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
     }
-    // This line should ideally not be reached if the loop always throws on the last retry,
-    // but included for type safety and as a fallback
     throw new Error(lastErrorMessage || "خطا در تولید تصویر پس از چندین تلاش.");
 };
 
 export const generateVideo = async (prompt: string, imageBase64: string): Promise<string> => {
-    const apiKey = process.env.API_KEY;
+    // @ts-ignore
+    const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) {
-        throw new Error("API Key is missing.");
+        throw new Error("API Key is missing (VITE_API_KEY).");
     }
     const ai = new GoogleGenAI({ apiKey });
   
@@ -266,8 +265,7 @@ export const generateVideo = async (prompt: string, imageBase64: string): Promis
             await new Promise(resolve => setTimeout(resolve, 5000));
             operation = await ai.operations.getVideosOperation({ operation: operation });
 
-            // Proactively check for errors within the operation object during polling
-            // @ts-ignore - The error object structure might not be fully typed by the SDK
+            // @ts-ignore
             if (operation.error) {
                 // @ts-ignore
                 const errorMessage = operation.error.message || 'Unknown error during video processing.';

@@ -151,7 +151,7 @@ const App: React.FC = () => {
             <div className="text-xs text-slate-500 dir-ltr flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3">
                 <span>© {new Date().getFullYear()} ZarinBaby. All Rights Reserved.</span>
                 <span className="hidden md:inline text-slate-300">◆</span>
-                <span className="font-sans">تمامی حقوق محفوظ است (v1.0.12)</span>
+                <span className="font-sans">تمامی حقوق محفوظ است (v1.0.13)</span>
             </div>
         </div>
       </footer>
