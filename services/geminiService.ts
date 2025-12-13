@@ -2,6 +2,14 @@ import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { getSystemPrompt, getUpdateSystemPrompt, getImageRegenerationSystemPrompt } from '../constants';
 import { ModelType, ScenarioSettings, Sequence, UpdatedSequenceData, SequenceUpdatePayload, Character, VideoPrompt } from '../types';
 
+// Centralized safety settings to block no categories, as requested.
+const safetySettings = [
+    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+];
+
 export const generateScenario = async (
   topic: string, 
   additionalDetails: string, 
@@ -19,13 +27,6 @@ export const generateScenario = async (
   if (additionalDetails && additionalDetails.trim()) {
     userPrompt += `\n\nIMPORTANT ADDITIONAL CONTEXT/TAGS/IDEAS:\n${additionalDetails}\n\nEnsure these details are strictly incorporated into the story, the descriptions, and the English Image/Video Prompts.`;
   }
-
-  const safetySettings = [
-    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-  ];
 
   try {
     const response = await ai.models.generateContent({
@@ -86,6 +87,7 @@ export const updateSequencePrompts = async (
         systemInstruction: getUpdateSystemPrompt(settings),
         temperature: 0.7,
         responseMimeType: 'application/json', 
+        safetySettings,
       },
     });
 
@@ -125,6 +127,7 @@ export const regenerateSingleImagePrompt = async (
         systemInstruction: systemInstruction,
         temperature: 0.6,
         responseMimeType: 'application/json',
+        safetySettings,
       },
     });
 
@@ -166,13 +169,6 @@ export const generateImage = async (prompt: string, referenceImages: { name: str
 Any deviation from the reference images is considered a failure. This is not a suggestion, it is a strict command.`;
     }
     contentParts.push({ text: finalPrompt });
-
-    const safetySettings = [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    ];
 
     const MAX_RETRIES = 3;
     let lastErrorIsQuota = false;
